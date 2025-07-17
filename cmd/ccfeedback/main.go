@@ -4,12 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
 	"github.com/jrossi/ccfeedback"
+	"github.com/jrossi/ccfeedback/internal/daemon"
 )
 
 // Build variables injected via ldflags
@@ -162,7 +164,26 @@ func main() {
 		showArgs := args[1:]
 		if args[0] == "show-actions" {
 			// Convert "show-actions <file>" to "show filter <file>"
-			showArgs = append([]string{"filter"}, args[1:]...)
+			// Note: show filter only supports one file at a time
+			if len(args) > 1 {
+				showArgs = []string{"filter", args[1]}
+			} else {
+				showArgs = []string{"filter"}
+			}
+		}
+
+		// Pass through flags if specified
+		if *debug {
+			showArgs = append([]string{"--debug"}, showArgs...)
+		}
+		if *configFile != "" {
+			showArgs = append([]string{"--config", *configFile}, showArgs...)
+		}
+
+		// Debug output
+		if *debug {
+			fmt.Fprintf(os.Stderr, "Debug: configFile=%s\n", *configFile)
+			fmt.Fprintf(os.Stderr, "Debug: showArgs=%v\n", showArgs)
 		}
 
 		cmd := exec.Command(subcommand, showArgs...) // #nosec G204 - subcommand is controlled
@@ -182,12 +203,18 @@ func main() {
 	}
 
 	// Default behavior: process hook from stdin
+	ctx := context.Background()
+
+	// Try to use daemon first
+	if tryDaemonMode(ctx, *debug) {
+		// Successfully processed via daemon
+		return
+	}
+
+	// Fallback to direct execution
 	// Create executor
 	executor := ccfeedback.NewExecutor(ruleEngine)
 	executor.SetTimeout(*timeout)
-
-	// Create context
-	ctx := context.Background()
 
 	// Execute
 	exitCode, err := executor.ExecuteWithExitCode(ctx)
@@ -216,4 +243,65 @@ func main() {
 
 	// Exit with the proper code
 	os.Exit(exitCode)
+}
+
+// tryDaemonMode attempts to process the hook via the daemon
+func tryDaemonMode(ctx context.Context, debug bool) bool {
+	// Only use daemon mode if explicitly enabled
+	if os.Getenv("CCFEEDBACK_DAEMON") != "1" {
+		if debug {
+			fmt.Fprintf(os.Stderr, "Debug: Daemon mode disabled (CCFEEDBACK_DAEMON != 1)\n")
+		}
+		return false
+	}
+	if debug {
+		fmt.Fprintf(os.Stderr, "Debug: Daemon mode enabled\n")
+	}
+
+	// Read stdin data
+	stdinData, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		if debug {
+			fmt.Fprintf(os.Stderr, "Failed to read stdin: %v\n", err)
+		}
+		return false
+	}
+	if debug {
+		fmt.Fprintf(os.Stderr, "Debug: Read %d bytes from stdin\n", len(stdinData))
+		fmt.Fprintf(os.Stderr, "Debug: stdin data: %q\n", string(stdinData))
+	}
+
+	// Create daemon client
+	client, err := daemon.NewClient()
+	if err != nil {
+		if debug {
+			fmt.Fprintf(os.Stderr, "Failed to create daemon client: %v\n", err)
+		}
+		return false
+	}
+
+	// Try to send request to daemon
+	resp, err := client.SendHookRequest(ctx, stdinData)
+	if err != nil {
+		if debug {
+			fmt.Fprintf(os.Stderr, "Failed to process via daemon: %v\n", err)
+		}
+		return false
+	}
+
+	// Write response
+	if len(resp.Stdout) > 0 {
+		os.Stdout.Write(resp.Stdout)
+	}
+	if len(resp.Stderr) > 0 {
+		os.Stderr.Write(resp.Stderr)
+	}
+
+	// Always flush both stdout and stderr before exiting
+	os.Stdout.Sync()
+	os.Stderr.Sync()
+
+	// Exit with daemon's exit code
+	os.Exit(resp.ExitCode)
+	return true // This line won't be reached due to os.Exit
 }
