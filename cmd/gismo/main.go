@@ -34,6 +34,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Commands:\n")
 		fmt.Fprintf(os.Stderr, "  init                    Set up gismo in Claude Code settings\n")
 		fmt.Fprintf(os.Stderr, "  show <command>          Show various information (config, filter, setup, linters)\n")
+		fmt.Fprintf(os.Stderr, "  registry <subcommand>   Manage package registries (add, remove, list, update)\n")
 		fmt.Fprintf(os.Stderr, "\nFlags:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nDefault behavior (no command):\n")
@@ -180,6 +181,49 @@ func main() {
 		}
 
 		cmd := exec.Command(subcommand, showArgs...) // #nosec G204 - subcommand is controlled
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = os.Environ()
+
+		if err := cmd.Run(); err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				os.Exit(exitErr.ExitCode())
+			}
+			fmt.Fprintf(os.Stderr, "Error: failed to execute %s: %v\n", subcommand, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	} else if len(args) > 0 && args[0] == "registry" {
+		// Dispatch to gismo-registry binary
+		subcommand := "gismo-registry"
+
+		// Try to find the subcommand in the same directory as the main binary
+		execPath, err := os.Executable()
+		if err == nil {
+			dir := filepath.Dir(execPath)
+			localSubcommand := filepath.Join(dir, subcommand)
+			if _, err := os.Stat(localSubcommand); err == nil {
+				subcommand = localSubcommand
+			}
+		}
+
+		// Build arguments for registry command
+		var registryArgs []string
+
+		// Add config flag if it was provided
+		if *configFile != "" {
+			registryArgs = append(registryArgs, "--config", *configFile)
+		}
+		// Add debug flag if it was provided
+		if *debug {
+			registryArgs = append(registryArgs, "--debug")
+		}
+
+		// Add registry subcommand and its arguments
+		registryArgs = append(registryArgs, args[1:]...)
+
+		cmd := exec.Command(subcommand, registryArgs...) // #nosec G204 - subcommand is controlled
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

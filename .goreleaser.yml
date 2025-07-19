@@ -126,6 +126,44 @@ builds:
     env:
       - CGO_ENABLED=0
 
+  - id: gismo-registry
+    main: ./cmd/gismo-registry
+    binary: gismo-registry
+    
+    # Custom build flags
+    flags:
+      - -trimpath
+      
+    # Custom ldflags
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+    
+    # Build for multiple platforms
+    goos:
+      - linux
+      - darwin
+      - windows
+    
+    goarch:
+      - amd64
+      - arm64
+    
+    # Skip certain combinations
+    ignore:
+      - goos: windows
+        goarch: arm64
+    
+    # Set the modified timestamp on the output binary
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    
+    # Environment variables
+    env:
+      - CGO_ENABLED=0
+
 # Archive configuration
 archives:
   - id: gismo
@@ -143,11 +181,12 @@ archives:
       - goos: windows
         format: zip
     
-    # Include all three binaries
+    # Include all four binaries
     builds:
       - gismo
       - gismo-init
       - gismo-show
+      - gismo-registry
     
     # Files to include in archive
     files:
@@ -294,6 +333,7 @@ brews:
       bin.install "gismo"
       bin.install "gismo-init"
       bin.install "gismo-show"
+      bin.install "gismo-registry"
     
     # Test script
     test: |

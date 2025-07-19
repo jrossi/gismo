@@ -1,0 +1,223 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gismo.run/schemas/manifest/v1.schema.json",
+  "title": "Gismo Registry Manifest",
+  "description": "Schema for Gismo registry manifest.json files",
+  "type": "object",
+  "required": ["version", "name", "components"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Manifest version in major.minor format"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$",
+      "minLength": 1,
+      "maxLength": 50,
+      "description": "Package name (lowercase, alphanumeric with hyphens)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Brief description of the package"
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "Package author"
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "description": "Package homepage URL"
+    },
+    "license": {
+      "type": "string",
+      "maxLength": 50,
+      "description": "Package license identifier (e.g., MIT, Apache-2.0)"
+    },
+    "gismo": {
+      "type": "object",
+      "description": "Gismo version requirements",
+      "properties": {
+        "minVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Minimum required gismo version"
+        },
+        "maxVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Maximum supported gismo version"
+        }
+      },
+      "additionalProperties": false
+    },
+    "components": {
+      "type": "object",
+      "description": "Package components organized by type",
+      "properties": {
+        "prompts": {
+          "$ref": "#/definitions/componentGroup",
+          "description": "Claude Code prompt/command files"
+        },
+        "tools": {
+          "$ref": "#/definitions/componentGroup",
+          "description": "Go binary tools"
+        },
+        "scripts": {
+          "$ref": "#/definitions/componentGroup",
+          "description": "Shell scripts"
+        },
+        "linters": {
+          "$ref": "#/definitions/componentGroup",
+          "description": "Custom linters"
+        },
+        "configs": {
+          "$ref": "#/definitions/componentGroup",
+          "description": "Configuration files"
+        },
+        "schemas": {
+          "$ref": "#/definitions/componentGroup",
+          "description": "JSON schema files"
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Package dependencies",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9./:-]+@v[0-9]+\\.[0-9]+\\.[0-9]+$",
+        "description": "Dependency in format: repository@version"
+      },
+      "uniqueItems": true
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Lifecycle hooks",
+      "properties": {
+        "postInstall": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Script to run after installation"
+        },
+        "preRemove": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Script to run before removal"
+        }
+      },
+      "additionalProperties": false
+    },
+    "config": {
+      "type": "object",
+      "description": "Package configuration",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Path to configuration schema file"
+        },
+        "default": {
+          "description": "Default configuration values"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "componentGroup": {
+      "type": "object",
+      "description": "Group of components of the same type",
+      "patternProperties": {
+        "^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$": {
+          "$ref": "#/definitions/component"
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "component": {
+      "type": "object",
+      "description": "Individual component specification",
+      "required": ["source", "target", "type"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Source path in repository"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Target path relative to .claude/"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["command", "go-binary", "shell-script", "go-linter", "config", "schema"],
+          "description": "Component type"
+        },
+        "build": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Build command for go-binary components"
+        },
+        "executable": {
+          "type": "boolean",
+          "description": "Set executable permissions"
+        },
+        "extensions": {
+          "type": "array",
+          "description": "File extensions for linters",
+          "items": {
+            "type": "string",
+            "pattern": "^\\.[a-zA-Z0-9]+$"
+          },
+          "uniqueItems": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Priority for linters (higher = earlier execution)"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Component description"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "go-binary" }
+            }
+          },
+          "then": {
+            "required": ["build"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "go-linter" }
+            }
+          },
+          "then": {
+            "required": ["extensions"]
+          }
+        }
+      ]
+    }
+  }
+}
