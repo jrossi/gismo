@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jrossi/gismo"
 )
@@ -37,6 +38,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  remove <name>           Remove a package\n")
 		fmt.Fprintf(os.Stderr, "  list                    List installed packages\n")
 		fmt.Fprintf(os.Stderr, "  update [name]           Update packages (or specific package)\n")
+		fmt.Fprintf(os.Stderr, "  search [pattern]        Search for packages in registries\n")
 		fmt.Fprintf(os.Stderr, "\nFlags:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nScope flags:\n")
@@ -129,6 +131,12 @@ func main() {
 			packageName = args[1]
 		}
 		err = packageManager.UpdatePackages(ctx, packageName, scope, *dryRunFlag, *forceFlag)
+	case "search":
+		var pattern string
+		if len(args) > 1 {
+			pattern = args[1]
+		}
+		err = packageManager.SearchPackages(ctx, pattern)
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown command '%s'\n", command)
 		flag.Usage()
@@ -172,6 +180,7 @@ type PackageManager struct {
 	configLoader *gismo.ConfigLoader
 	gitOps       *gismo.GitOperations
 	installer    *ComponentInstaller
+	depResolver  *gismo.DependencyResolver
 	debug        bool
 }
 
@@ -182,39 +191,94 @@ func NewPackageManager(appConfig *gismo.AppConfig, configLoader *gismo.ConfigLoa
 		configLoader: configLoader,
 		gitOps:       gismo.NewGitOperations(),
 		installer:    NewComponentInstaller(debug),
+		depResolver:  gismo.NewDependencyResolver(appConfig, debug),
 		debug:        debug,
 	}
 }
 
-// InstallPackage installs a package
+// InstallPackage installs a package and its dependencies
 func (pm *PackageManager) InstallPackage(ctx context.Context, packageName string, scope Scope, dryRun, force bool) error {
 	if pm.debug {
 		fmt.Printf("Installing package: %s (scope: %s, dry-run: %t, force: %t)\n", packageName, scope, dryRun, force)
 	}
 
-	// Find the package in available registries
-	registryEntry, manifest, err := pm.findPackageInRegistries(ctx, packageName)
+	// Resolve dependencies
+	fmt.Printf("🔍 Resolving dependencies for '%s'...\n", packageName)
+	installPlan, err := pm.depResolver.ResolveDependencies(ctx, packageName)
 	if err != nil {
-		return fmt.Errorf("failed to find package '%s': %w", packageName, err)
+		return fmt.Errorf("failed to resolve dependencies: %w", err)
 	}
 
-	// Check if package is already installed
-	if existing, ok := pm.appConfig.GetPackage(packageName); ok && !force {
-		return fmt.Errorf("package '%s' is already installed (use --force to reinstall)\nInstalled from: %s", packageName, existing.RegistryName)
+	// Validate the install plan
+	if err := pm.depResolver.ValidateInstallPlan(installPlan); err != nil {
+		return fmt.Errorf("install plan validation failed: %w", err)
+	}
+
+	// Show dependency plan
+	if len(installPlan.Dependencies) > 1 {
+		fmt.Printf("📋 Install plan (%d packages):\n", len(installPlan.Dependencies))
+		for _, dep := range pm.depResolver.GetInstallOrder(installPlan) {
+			prefix := strings.Repeat("  ", dep.InstallLevel)
+			if dep.InstallLevel == 0 {
+				fmt.Printf("%s📦 %s (main package)\n", prefix, dep.Spec.Name)
+			} else {
+				fmt.Printf("%s└─ %s (dependency)\n", prefix, dep.Spec.Name)
+			}
+		}
+	} else {
+		fmt.Printf("📋 No dependencies required\n")
 	}
 
 	if dryRun {
-		fmt.Printf("Would install package '%s' from registry '%s'\n", packageName, registryEntry.URL)
-		componentCount := 0
-		for _, group := range manifest.Components {
-			componentCount += len(group)
-		}
-		fmt.Printf("Would install %d components\n", componentCount)
+		fmt.Printf("Would install %d package(s)\n", len(installPlan.Dependencies))
 		return nil
 	}
 
+	// Check for existing installations if not forcing
+	if !force {
+		for _, dep := range installPlan.Dependencies {
+			if existing, ok := pm.appConfig.GetPackage(dep.Spec.Name); ok {
+				return fmt.Errorf("package '%s' is already installed (use --force to reinstall)\nInstalled from: %s",
+					dep.Spec.Name, existing.RegistryName)
+			}
+		}
+	}
+
+	// Install packages in dependency order
+	installedCount := 0
+	for _, dep := range pm.depResolver.GetInstallOrder(installPlan) {
+		if err := pm.installSinglePackage(ctx, dep, scope); err != nil {
+			return fmt.Errorf("failed to install package '%s': %w", dep.Spec.Name, err)
+		}
+		installedCount++
+	}
+
+	// Save configuration
+	if err := pm.saveConfiguration(scope); err != nil {
+		return fmt.Errorf("failed to save configuration: %w", err)
+	}
+
+	if installedCount == 1 {
+		fmt.Printf("✅ Installed package '%s'\n", packageName)
+	} else {
+		fmt.Printf("✅ Installed %d packages ('%s' and %d dependencies)\n",
+			installedCount, packageName, installedCount-1)
+	}
+	return nil
+}
+
+// installSinglePackage installs a single package from a dependency entry
+func (pm *PackageManager) installSinglePackage(ctx context.Context, dep *gismo.DependencyEntry, scope Scope) error {
+	packageName := dep.Spec.Name
+
+	if pm.debug {
+		fmt.Printf("Installing single package: %s\n", packageName)
+	}
+
 	// Clone registry to temporary location for installation
-	fmt.Printf("📦 Installing package '%s'...\n", packageName)
+	prefix := strings.Repeat("  ", dep.InstallLevel)
+	fmt.Printf("%s📦 Installing '%s'...\n", prefix, packageName)
+
 	tempDir, err := pm.createTempPackageDir(packageName)
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
@@ -222,41 +286,39 @@ func (pm *PackageManager) InstallPackage(ctx context.Context, packageName string
 	defer os.RemoveAll(tempDir)
 
 	// Clone the registry repository
-	repoInfo, err := pm.gitOps.CloneRepository(ctx, registryEntry.URL, tempDir)
+	repoInfo, err := pm.gitOps.CloneRepository(ctx, dep.RegistryURL, tempDir)
 	if err != nil {
 		return fmt.Errorf("failed to clone registry: %w", err)
 	}
 
 	// Checkout the specific commit SHA for reproducibility
-	if registryEntry.GitSHA != "" && registryEntry.GitSHA != repoInfo.CommitSHA {
-		if err := pm.gitOps.CheckoutCommit(ctx, tempDir, registryEntry.GitSHA); err != nil {
-			return fmt.Errorf("failed to checkout commit %s: %w", registryEntry.GitSHA, err)
+	if dep.CommitSHA != "" && dep.CommitSHA != repoInfo.CommitSHA {
+		if err := pm.gitOps.CheckoutCommit(ctx, tempDir, dep.CommitSHA); err != nil {
+			return fmt.Errorf("failed to checkout commit %s: %w", dep.CommitSHA, err)
 		}
 	}
 
 	// Install components
-	installResults, err := pm.installer.InstallComponents(ctx, tempDir, manifest, pm.getClaudeDir())
+	installResults, err := pm.installer.InstallComponents(ctx, tempDir, dep.Manifest, pm.getClaudeDir())
 	if err != nil {
 		return fmt.Errorf("failed to install components: %w", err)
 	}
 
 	// Create package entry
 	packageEntry := &gismo.PackageEntry{
-		RegistryName: registryEntry.URL, // Store URL as registry identifier
-		GitSHA:       repoInfo.CommitSHA,
+		RegistryName: dep.RegistryURL,
+		GitSHA:       dep.CommitSHA,
 		Installed:    installResults,
-		Manifest:     manifest,
+		Manifest:     dep.Manifest,
 	}
 
 	// Add package to configuration
 	pm.appConfig.AddPackage(packageName, packageEntry)
 
-	// Save configuration
-	if err := pm.saveConfiguration(scope); err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+	if pm.debug {
+		fmt.Printf("%s✅ Installed '%s' with %d components\n", prefix, packageName, len(installResults))
 	}
 
-	fmt.Printf("✅ Installed package '%s' with %d components\n", packageName, len(installResults))
 	return nil
 }
 
@@ -367,6 +429,191 @@ func (pm *PackageManager) UpdatePackages(ctx context.Context, packageName string
 	return nil
 }
 
+// SearchPackages searches for packages in configured registries
+func (pm *PackageManager) SearchPackages(ctx context.Context, pattern string) error {
+	if pm.debug {
+		fmt.Printf("Searching for packages with pattern: '%s'\n", pattern)
+	}
+
+	registryNames := pm.appConfig.ListRegistries()
+	if len(registryNames) == 0 {
+		fmt.Println("No registries configured. Run 'gismo registry add <url>' first")
+		return nil
+	}
+
+	fmt.Printf("🔍 Searching in %d registr%s...\n", len(registryNames),
+		map[bool]string{true: "y", false: "ies"}[len(registryNames) == 1])
+
+	foundPackages := []*SearchResult{}
+
+	for _, registryName := range registryNames {
+		registryEntry, ok := pm.appConfig.GetRegistry(registryName)
+		if !ok {
+			continue
+		}
+
+		if pm.debug {
+			fmt.Printf("  Searching registry '%s'...\n", registryName)
+		}
+
+		results, err := pm.searchInRegistry(ctx, registryEntry, pattern)
+		if err != nil {
+			if pm.debug {
+				fmt.Printf("    Error searching registry '%s': %v\n", registryName, err)
+			}
+			continue
+		}
+
+		foundPackages = append(foundPackages, results...)
+	}
+
+	if len(foundPackages) == 0 {
+		if pattern == "" {
+			fmt.Println("No packages found in any registry")
+		} else {
+			fmt.Printf("No packages found matching '%s'\n", pattern)
+		}
+		return nil
+	}
+
+	// Display results
+	fmt.Printf("\n📦 Found %d package%s:\n", len(foundPackages),
+		map[bool]string{true: "", false: "s"}[len(foundPackages) == 1])
+
+	for _, result := range foundPackages {
+		fmt.Printf("\n  📦 %s@%s\n", result.Name, result.Version)
+		if result.Description != "" {
+			fmt.Printf("     %s\n", result.Description)
+		}
+		if result.Author != "" {
+			fmt.Printf("     Author: %s\n", result.Author)
+		}
+		fmt.Printf("     Registry: %s\n", result.RegistryName)
+
+		// Show component count
+		componentCount := 0
+		for _, group := range result.Manifest.Components {
+			componentCount += len(group)
+		}
+		fmt.Printf("     Components: %d\n", componentCount)
+
+		// Show if already installed
+		if existing, ok := pm.appConfig.GetPackage(result.Name); ok {
+			if existing.GitSHA == result.CommitSHA {
+				fmt.Printf("     Status: ✅ Installed (current)\n")
+			} else {
+				fmt.Printf("     Status: 📦 Installed (different version)\n")
+			}
+		} else {
+			fmt.Printf("     Status: ⬇️  Available for install\n")
+		}
+	}
+
+	fmt.Printf("\nTo install a package: gismo package install <name>\n")
+	return nil
+}
+
+// SearchResult represents a package found in search
+type SearchResult struct {
+	Name         string
+	Version      string
+	Description  string
+	Author       string
+	RegistryName string
+	RegistryURL  string
+	CommitSHA    string
+	Manifest     *gismo.ManifestData
+}
+
+// searchInRegistry searches for packages in a specific registry
+func (pm *PackageManager) searchInRegistry(ctx context.Context, registryEntry *gismo.RegistryEntry, pattern string) ([]*SearchResult, error) {
+	// Create temporary directory for search
+	tempDir, err := pm.createTempPackageDir("search-" + extractRegistryName(registryEntry.URL))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Clone the registry
+	repoInfo, err := pm.gitOps.CloneRepository(ctx, registryEntry.URL, tempDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to clone registry: %w", err)
+	}
+
+	// Parse manifest
+	manifestPath := filepath.Join(tempDir, "manifest.json")
+	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("no manifest.json found in registry")
+	}
+
+	parser, err := gismo.NewManifestParser()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create manifest parser: %w", err)
+	}
+
+	manifest, err := parser.ParseManifestFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse manifest: %w", err)
+	}
+
+	// Check if package matches search pattern
+	if pattern == "" || pm.matchesPattern(manifest, pattern) {
+		return []*SearchResult{{
+			Name:         manifest.Name,
+			Version:      manifest.Version,
+			Description:  manifest.Description,
+			Author:       manifest.Author,
+			RegistryName: extractRegistryName(registryEntry.URL),
+			RegistryURL:  registryEntry.URL,
+			CommitSHA:    repoInfo.CommitSHA,
+			Manifest:     manifest,
+		}}, nil
+	}
+
+	return []*SearchResult{}, nil
+}
+
+// matchesPattern checks if a manifest matches the search pattern
+func (pm *PackageManager) matchesPattern(manifest *gismo.ManifestData, pattern string) bool {
+	pattern = strings.ToLower(pattern)
+
+	// Check name
+	if strings.Contains(strings.ToLower(manifest.Name), pattern) {
+		return true
+	}
+
+	// Check description
+	if strings.Contains(strings.ToLower(manifest.Description), pattern) {
+		return true
+	}
+
+	// Check author
+	if strings.Contains(strings.ToLower(manifest.Author), pattern) {
+		return true
+	}
+
+	return false
+}
+
+// extractRegistryName extracts a display name from a registry URL
+func extractRegistryName(url string) string {
+	// Remove protocol and extract meaningful name
+	name := strings.TrimPrefix(url, "https://")
+	name = strings.TrimPrefix(name, "http://")
+	name = strings.TrimPrefix(name, "git@")
+
+	// Handle SSH format
+	name = strings.ReplaceAll(name, ":", "/")
+
+	// Extract last two parts (user/repo)
+	parts := strings.Split(name, "/")
+	if len(parts) >= 2 {
+		return fmt.Sprintf("%s/%s", parts[len(parts)-2], parts[len(parts)-1])
+	}
+
+	return name
+}
+
 // Helper methods will be implemented next...
 
 // createTempPackageDir creates a temporary directory for package operations
@@ -382,60 +629,6 @@ func (pm *PackageManager) createTempPackageDir(name string) (string, error) {
 func (pm *PackageManager) getClaudeDir() string {
 	homeDir, _ := os.UserHomeDir()
 	return filepath.Join(homeDir, ".claude")
-}
-
-// findPackageInRegistries finds a package in available registries
-func (pm *PackageManager) findPackageInRegistries(ctx context.Context, packageName string) (*gismo.RegistryEntry, *gismo.ManifestData, error) {
-	registryNames := pm.appConfig.ListRegistries()
-	if len(registryNames) == 0 {
-		return nil, nil, fmt.Errorf("no registries configured. Run 'gismo registry add <url>' first")
-	}
-
-	for _, registryName := range registryNames {
-		registryEntry, ok := pm.appConfig.GetRegistry(registryName)
-		if !ok {
-			continue
-		}
-
-		// Clone registry to check for package
-		tempDir, err := pm.createTempPackageDir(registryName + "-search")
-		if err != nil {
-			continue
-		}
-		defer os.RemoveAll(tempDir)
-
-		// Clone the registry
-		_, err = pm.gitOps.CloneRepository(ctx, registryEntry.URL, tempDir)
-		if err != nil {
-			if pm.debug {
-				fmt.Printf("Failed to clone registry %s: %v\n", registryName, err)
-			}
-			continue
-		}
-
-		// Parse manifest
-		manifestPath := filepath.Join(tempDir, "manifest.json")
-		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-			continue
-		}
-
-		parser, err := gismo.NewManifestParser()
-		if err != nil {
-			continue
-		}
-
-		manifest, err := parser.ParseManifestFile(manifestPath)
-		if err != nil {
-			continue
-		}
-
-		// Check if this manifest contains the requested package
-		if manifest.Name == packageName {
-			return registryEntry, manifest, nil
-		}
-	}
-
-	return nil, nil, fmt.Errorf("package '%s' not found in any configured registry", packageName)
 }
 
 // saveConfiguration saves the configuration
