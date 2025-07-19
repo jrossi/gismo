@@ -132,3 +132,44 @@ func (cl *ConfigLoader) ConfigExists() bool {
 	}
 	return false
 }
+
+// SaveConfig saves configuration to a specific file
+func (cl *ConfigLoader) SaveConfig(config *AppConfig, path string) error {
+	// Ensure directory exists
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Marshal to JSON with indentation
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Write to file atomically
+	tempPath := path + ".tmp"
+	if err := os.WriteFile(tempPath, data, 0600); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	// Atomic rename
+	if err := os.Rename(tempPath, path); err != nil {
+		os.Remove(tempPath) // Clean up temp file on error
+		return fmt.Errorf("failed to rename config file: %w", err)
+	}
+
+	return nil
+}
+
+// SaveToGlobalConfig saves configuration to the global config file
+func (cl *ConfigLoader) SaveToGlobalConfig(config *AppConfig) error {
+	path := filepath.Join(cl.homeDir, ".claude", "gismo.json")
+	return cl.SaveConfig(config, path)
+}
+
+// SaveToProjectConfig saves configuration to the project config file
+func (cl *ConfigLoader) SaveToProjectConfig(config *AppConfig) error {
+	path := filepath.Join(cl.projectDir, ".claude", "gismo.json")
+	return cl.SaveConfig(config, path)
+}
