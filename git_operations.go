@@ -276,3 +276,17 @@ func ExtractRepoName(gitURL string) string {
 
 	return "unknown-repo"
 }
+
+// ExtractNamespacePath extracts the full namespace path from a git URL
+// e.g., "https://github.com/user/repo" -> "github.com/user/repo"
+func ExtractNamespacePath(gitURL string) string {
+	// Normalize URL first
+	url := NormalizeGitURL(gitURL)
+	
+	// Remove protocol
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+	
+	// Return full path for namespacing
+	return url
+}

@@ -232,9 +232,9 @@ func (p *ManifestParser) validateDependency(dependency string) error {
 }
 
 // GetComponentInstallPath returns the full installation path for a component
-func (p *ManifestParser) GetComponentInstallPath(component *Component, claudeDir string) string {
+func (p *ManifestParser) GetComponentInstallPath(component *Component, claudeDir string, namespace string) string {
 	basePath := GetComponentTargetPath(component.Type)
-	return fmt.Sprintf("%s/%s/%s", claudeDir, basePath, component.Target)
+	return fmt.Sprintf("%s/%s/%s/%s", claudeDir, basePath, namespace, component.Target)
 }
 
 // ListAllComponents returns a flat list of all components in a manifest

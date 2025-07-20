@@ -299,7 +299,7 @@ func (pm *PackageManager) installSinglePackage(ctx context.Context, dep *gismo.D
 	}
 
 	// Install components
-	installResults, err := pm.installer.InstallComponents(ctx, tempDir, dep.Manifest, pm.getClaudeDir())
+	installResults, err := pm.installer.InstallComponents(ctx, tempDir, dep.Manifest, pm.getClaudeDir(), dep.RegistryURL)
 	if err != nil {
 		return fmt.Errorf("failed to install components: %w", err)
 	}
@@ -695,7 +695,7 @@ func NewComponentInstaller(debug bool) *ComponentInstaller {
 }
 
 // InstallComponents installs components from a manifest
-func (ci *ComponentInstaller) InstallComponents(ctx context.Context, repoPath string, manifest *gismo.ManifestData, claudeDir string) (map[string]string, error) {
+func (ci *ComponentInstaller) InstallComponents(ctx context.Context, repoPath string, manifest *gismo.ManifestData, claudeDir string, gitURL string) (map[string]string, error) {
 	installed := make(map[string]string)
 
 	// Parse components and install them
@@ -706,12 +706,15 @@ func (ci *ComponentInstaller) InstallComponents(ctx context.Context, repoPath st
 
 	components := parser.ListAllComponents(manifest)
 
+	// Extract namespace from git URL
+	namespace := gismo.ExtractNamespacePath(gitURL)
+
 	for _, componentInfo := range components {
 		componentName := fmt.Sprintf("%s.%s", componentInfo.Group, componentInfo.Name)
 
 		// Determine source and destination paths
 		srcPath := filepath.Join(repoPath, componentInfo.Component.Source)
-		dstPath := parser.GetComponentInstallPath(componentInfo.Component, claudeDir)
+		dstPath := parser.GetComponentInstallPath(componentInfo.Component, claudeDir, namespace)
 
 		if ci.debug {
 			fmt.Printf("Installing component %s: %s -> %s\n", componentName, srcPath, dstPath)
