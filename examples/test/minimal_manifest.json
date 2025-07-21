@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "name": "test-package",
+  "components": {
+    "prompts": {
+      "test-prompt": {
+        "source": "test.md",
+        "target": "prompts/test.md",
+        "type": "command",
+        "description": "Test prompt"
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
 	"time"
 
 	"github.com/jrossi/gismo"
@@ -171,6 +171,7 @@ func determineScope(globalFlag, projectFlag bool) Scope {
 type RegistryManager struct {
 	appConfig    *gismo.AppConfig
 	configLoader *gismo.ConfigLoader
+	gitOps       *gismo.GitOperations
 	debug        bool
 }
 
@@ -179,6 +180,7 @@ func NewRegistryManager(appConfig *gismo.AppConfig, configLoader *gismo.ConfigLo
 	return &RegistryManager{
 		appConfig:    appConfig,
 		configLoader: configLoader,
+		gitOps:       gismo.NewGitOperations(),
 		debug:        debug,
 	}
 }
@@ -189,8 +191,16 @@ func (rm *RegistryManager) AddRegistry(ctx context.Context, gitURL string, scope
 		fmt.Printf("Adding registry: %s (scope: %s, dry-run: %t, force: %t)\n", gitURL, scope, dryRun, force)
 	}
 
+	// Verify git is available
+	if err := rm.gitOps.VerifyGitAvailable(ctx); err != nil {
+		return fmt.Errorf("git is required but not available: %w", err)
+	}
+
+	// Normalize URL
+	normalizedURL := gismo.NormalizeGitURL(gitURL)
+
 	// Extract repository name from URL
-	name := extractRepoName(gitURL)
+	name := gismo.ExtractRepoName(normalizedURL)
 	if name == "" {
 		return fmt.Errorf("failed to extract repository name from URL: %s", gitURL)
 	}
@@ -200,19 +210,57 @@ func (rm *RegistryManager) AddRegistry(ctx context.Context, gitURL string, scope
 		return fmt.Errorf("registry '%s' already exists (use --force to overwrite)\nExisting: %s", name, existing.URL)
 	}
 
+	if dryRun {
+		fmt.Printf("Would add registry '%s' with URL: %s\n", name, normalizedURL)
+		return nil
+	}
+
+	// Clone repository to temporary location to validate manifest
+	fmt.Printf("📥 Fetching registry from %s...\n", normalizedURL)
+	tempDir, err := rm.createTempRegistryDir(name)
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir) // Cleanup temp directory
+
+	// Clone the repository
+	repoInfo, err := rm.gitOps.CloneRepository(ctx, normalizedURL, tempDir)
+	if err != nil {
+		return fmt.Errorf("failed to clone repository: %w", err)
+	}
+
+	// Validate manifest exists and is valid
+	manifest, err := rm.validateRepositoryManifest(tempDir)
+	if err != nil {
+		return fmt.Errorf("repository validation failed: %w", err)
+	}
+
+	// Display manifest information
+	fmt.Printf("✅ Found valid manifest.json:\n")
+	fmt.Printf("   Name: %s\n", manifest.Name)
+	fmt.Printf("   Version: %s\n", manifest.Version)
+	if manifest.Description != "" {
+		fmt.Printf("   Description: %s\n", manifest.Description)
+	}
+	if manifest.Author != "" {
+		fmt.Printf("   Author: %s\n", manifest.Author)
+	}
+
+	// Count components
+	componentCount := 0
+	for _, group := range manifest.Components {
+		componentCount += len(group)
+	}
+	fmt.Printf("   Components: %d\n", componentCount)
+
 	// Create registry entry
 	entry := &gismo.RegistryEntry{
-		URL:         gitURL,
-		GitSHA:      "", // Will be populated when fetching
-		Version:     "", // Will be populated if tagged
+		URL:         normalizedURL,
+		GitSHA:      repoInfo.CommitSHA,
+		Version:     manifest.Version,
 		Scope:       string(scope),
 		InstallDate: time.Now(),
 		UpdatedDate: time.Now(),
-	}
-
-	if dryRun {
-		fmt.Printf("Would add registry '%s' with URL: %s\n", name, gitURL)
-		return nil
 	}
 
 	// Add to configuration
@@ -223,7 +271,8 @@ func (rm *RegistryManager) AddRegistry(ctx context.Context, gitURL string, scope
 		return fmt.Errorf("failed to save configuration: %w", err)
 	}
 
-	fmt.Printf("✅ Added registry '%s' with URL: %s\n", name, gitURL)
+	fmt.Printf("✅ Added registry '%s' (SHA: %s)\n", name, repoInfo.CommitSHA[:8])
+	fmt.Printf("💡 Run 'gismo package install %s' to install components\n", manifest.Name)
 	return nil
 }
 
@@ -295,85 +344,160 @@ func (rm *RegistryManager) UpdateRegistries(ctx context.Context, registryName st
 		fmt.Printf("Updating registries: %s (scope: %s, dry-run: %t, force: %t)\n", registryName, scope, dryRun, force)
 	}
 
-	if registryName != "" {
-		// Update specific registry
-		if _, ok := rm.appConfig.GetRegistry(registryName); !ok {
-			return fmt.Errorf("registry '%s' not found", registryName)
-		}
-
-		if dryRun {
-			fmt.Printf("Would update registry '%s'\n", registryName)
-			return nil
-		}
-
-		fmt.Printf("🔄 Updating registry '%s'...\n", registryName)
-		// TODO: Implement actual git fetching and SHA updating
-		fmt.Printf("✅ Updated registry '%s'\n", registryName)
-	} else {
-		// Update all registries
-		registryNames := rm.appConfig.ListRegistries()
-		if len(registryNames) == 0 {
-			fmt.Println("No registries to update")
-			return nil
-		}
-
-		if dryRun {
-			fmt.Printf("Would update %d registries\n", len(registryNames))
-			return nil
-		}
-
-		fmt.Printf("🔄 Updating %d registries...\n", len(registryNames))
-		for _, name := range registryNames {
-			fmt.Printf("  - %s\n", name)
-			// TODO: Implement actual git fetching and SHA updating
-		}
-		fmt.Printf("✅ Updated %d registries\n", len(registryNames))
+	// Verify git is available
+	if err := rm.gitOps.VerifyGitAvailable(ctx); err != nil {
+		return fmt.Errorf("git is required but not available: %w", err)
 	}
 
+	if registryName != "" {
+		// Update specific registry
+		return rm.updateSingleRegistry(ctx, registryName, scope, dryRun, force)
+	}
+
+	// Update all registries
+	registryNames := rm.appConfig.ListRegistries()
+	if len(registryNames) == 0 {
+		fmt.Println("No registries to update")
+		return nil
+	}
+
+	if dryRun {
+		fmt.Printf("Would update %d registries\n", len(registryNames))
+		return nil
+	}
+
+	fmt.Printf("🔄 Updating %d registries...\n", len(registryNames))
+
+	updateCount := 0
+	for _, name := range registryNames {
+		fmt.Printf("  📦 Updating %s...\n", name)
+		if err := rm.updateSingleRegistry(ctx, name, scope, dryRun, force); err != nil {
+			fmt.Printf("     ❌ Failed to update %s: %v\n", name, err)
+		} else {
+			fmt.Printf("     ✅ Updated %s\n", name)
+			updateCount++
+		}
+	}
+
+	fmt.Printf("✅ Updated %d/%d registries\n", updateCount, len(registryNames))
 	return nil
 }
 
 // saveConfiguration saves the configuration to the appropriate files
 func (rm *RegistryManager) saveConfiguration(scope Scope) error {
-	// For now, this is a placeholder
-	// In a full implementation, this would:
-	// 1. Determine which config files to write to based on scope
-	// 2. Write the configuration to the appropriate files
-	// 3. Handle file permissions and backup creation
+	if rm.debug {
+		fmt.Printf("Saving configuration with scope: %s\n", scope)
+	}
+
+	switch scope {
+	case ScopeGlobal:
+		return rm.configLoader.SaveToGlobalConfig(rm.appConfig)
+	case ScopeProject:
+		return rm.configLoader.SaveToProjectConfig(rm.appConfig)
+	case ScopeBoth:
+		// Save to both global and project configs
+		if err := rm.configLoader.SaveToGlobalConfig(rm.appConfig); err != nil {
+			return fmt.Errorf("failed to save global config: %w", err)
+		}
+		if err := rm.configLoader.SaveToProjectConfig(rm.appConfig); err != nil {
+			return fmt.Errorf("failed to save project config: %w", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown scope: %s", scope)
+	}
+}
+
+// createTempRegistryDir creates a temporary directory for registry operations
+func (rm *RegistryManager) createTempRegistryDir(name string) (string, error) {
+	tempDir := filepath.Join(os.TempDir(), "gismo-registry-"+name)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	return tempDir, nil
+}
+
+// validateRepositoryManifest validates that a repository contains a valid manifest
+func (rm *RegistryManager) validateRepositoryManifest(repoPath string) (*gismo.ManifestData, error) {
+	// Check if manifest.json exists
+	manifestPath := filepath.Join(repoPath, "manifest.json")
+	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("manifest.json not found in repository root")
+	}
+
+	// Create manifest parser
+	parser, err := gismo.NewManifestParser()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create manifest parser: %w", err)
+	}
+
+	// Parse and validate manifest
+	manifest, err := parser.ParseManifestFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse manifest: %w", err)
+	}
+
+	// Perform integrity validation
+	if err := parser.ValidateManifestIntegrity(manifest, "dev"); err != nil {
+		return nil, fmt.Errorf("manifest integrity validation failed: %w", err)
+	}
+
+	return manifest, nil
+}
+
+// updateSingleRegistry updates a single registry
+func (rm *RegistryManager) updateSingleRegistry(ctx context.Context, registryName string, scope Scope, dryRun, force bool) error {
+	// Get registry entry
+	entry, ok := rm.appConfig.GetRegistry(registryName)
+	if !ok {
+		return fmt.Errorf("registry '%s' not found", registryName)
+	}
+
+	if dryRun {
+		fmt.Printf("Would update registry '%s' from %s\n", registryName, entry.URL)
+		return nil
+	}
+
+	// Clone to temporary directory to check for updates
+	tempDir, err := rm.createTempRegistryDir(registryName + "-update")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Clone repository
+	repoInfo, err := rm.gitOps.CloneRepository(ctx, entry.URL, tempDir)
+	if err != nil {
+		return fmt.Errorf("failed to clone repository: %w", err)
+	}
+
+	// Check if there are updates
+	if repoInfo.CommitSHA == entry.GitSHA {
+		if rm.debug {
+			fmt.Printf("Registry '%s' is already up to date (SHA: %s)\n", registryName, entry.GitSHA[:8])
+		}
+		return nil
+	}
+
+	// Validate manifest in updated repository
+	manifest, err := rm.validateRepositoryManifest(tempDir)
+	if err != nil {
+		return fmt.Errorf("updated repository validation failed: %w", err)
+	}
+
+	// Update registry entry
+	entry.GitSHA = repoInfo.CommitSHA
+	entry.Version = manifest.Version
+	entry.UpdatedDate = time.Now()
+
+	// Save updated configuration
+	if err := rm.saveConfiguration(scope); err != nil {
+		return fmt.Errorf("failed to save updated configuration: %w", err)
+	}
 
 	if rm.debug {
-		fmt.Printf("Would save configuration with scope: %s\n", scope)
+		fmt.Printf("Updated registry '%s' from SHA %s to %s\n", registryName, entry.GitSHA[:8], repoInfo.CommitSHA[:8])
 	}
 
 	return nil
-}
-
-// extractRepoName extracts a repository name from a git URL
-func extractRepoName(gitURL string) string {
-	// Handle common git URL formats:
-	// - https://github.com/user/repo
-	// - git@github.com:user/repo.git
-	// - github.com/user/repo
-
-	// Remove common prefixes
-	url := strings.TrimPrefix(gitURL, "https://")
-	url = strings.TrimPrefix(url, "http://")
-	url = strings.TrimPrefix(url, "git@")
-
-	// Handle SSH format (convert : to /)
-	url = strings.ReplaceAll(url, ":", "/")
-
-	// Remove .git suffix
-	url = strings.TrimSuffix(url, ".git")
-
-	// Split by / and take the last part
-	parts := strings.Split(url, "/")
-	if len(parts) >= 2 {
-		// Return "user-repo" format for better readability
-		user := parts[len(parts)-2]
-		repo := parts[len(parts)-1]
-		return fmt.Sprintf("%s-%s", user, repo)
-	}
-
-	return ""
 }

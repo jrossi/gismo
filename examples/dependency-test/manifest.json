@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "name": "advanced-tools",
+  "description": "Advanced development tools with dependencies",
+  "author": "Gismo Team",
+  "license": "MIT",
+  "gismo": {
+    "minVersion": "0.3.0"
+  },
+  "dependencies": [
+    "github.com/gismo/base-utils@v1.0.0",
+    "github.com/gismo/common-libs@v2.1.0"
+  ],
+  "components": {
+    "tools": {
+      "advanced-analyzer": {
+        "source": "tools/analyzer.go",
+        "target": "bin/advanced-analyzer",
+        "type": "go-binary",
+        "build": "go build -o advanced-analyzer tools/analyzer.go",
+        "executable": true,
+        "description": "Advanced code analysis tool with dependency support"
+      }
+    },
+    "prompts": {
+      "complex-review": {
+        "source": "prompts/complex-review.md",
+        "target": "prompts/complex-review.md",
+        "type": "command",
+        "description": "Complex code review prompt that requires base utilities"
+      }
+    }
+  },
+  "hooks": {
+    "postInstall": "echo 'Advanced tools installed! Dependencies: base-utils, common-libs'",
+    "preRemove": "echo 'Removing advanced tools...'"
+  }
+}
