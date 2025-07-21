@@ -197,10 +197,8 @@ func (p *ManifestParser) validateComponentRequirements(component *Component) err
 			}
 		}
 	case "shell-script":
-		// Shell scripts should be executable
-		if !component.Executable {
-			// This is a warning, not an error
-		}
+		// Shell scripts should be executable (warning only)
+		_ = component.Executable
 	}
 
 	return nil
