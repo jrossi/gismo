@@ -1,0 +1,429 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gismo.run/schemas/project-config/v1.schema.json",
+  "title": "Project Configuration Schema",
+  "description": "JSON schema for project-specific configuration files",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Configuration version"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Project name"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Project description"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["application", "library", "tool", "service", "website"],
+      "description": "Project type"
+    },
+    "language": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "string",
+          "enum": ["go", "javascript", "typescript", "python", "rust", "java", "c", "cpp", "ruby", "php", "other"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Language version requirement"
+        },
+        "frameworks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Frameworks and libraries used"
+        }
+      },
+      "required": ["primary"],
+      "additionalProperties": false
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "system": {
+          "type": "string",
+          "enum": ["make", "cmake", "maven", "gradle", "npm", "yarn", "cargo", "go", "custom"],
+          "description": "Build system used"
+        },
+        "commands": {
+          "type": "object",
+          "properties": {
+            "build": {
+              "type": "string",
+              "description": "Build command"
+            },
+            "test": {
+              "type": "string",
+              "description": "Test command"
+            },
+            "lint": {
+              "type": "string",
+              "description": "Lint command"
+            },
+            "format": {
+              "type": "string",
+              "description": "Format command"
+            },
+            "clean": {
+              "type": "string",
+              "description": "Clean command"
+            },
+            "install": {
+              "type": "string",
+              "description": "Install dependencies command"
+            }
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Target name"
+              },
+              "platform": {
+                "type": "string",
+                "enum": ["linux", "darwin", "windows", "web", "mobile"],
+                "description": "Target platform"
+              },
+              "architecture": {
+                "type": "string",
+                "enum": ["amd64", "arm64", "386", "arm"],
+                "description": "Target architecture"
+              },
+              "output": {
+                "type": "string",
+                "description": "Output file or directory"
+              }
+            },
+            "required": ["name", "platform"],
+            "additionalProperties": false
+          }
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Environment variables for build"
+        }
+      },
+      "additionalProperties": false
+    },
+    "testing": {
+      "type": "object",
+      "properties": {
+        "framework": {
+          "type": "string",
+          "description": "Testing framework used"
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Minimum coverage percentage"
+            },
+            "format": {
+              "type": "string",
+              "enum": ["lcov", "html", "text", "json"],
+              "description": "Coverage report format"
+            }
+          },
+          "additionalProperties": false
+        },
+        "directories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Test directories"
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Test file patterns"
+        }
+      },
+      "additionalProperties": false
+    },
+    "linting": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Linter name"
+              },
+              "config": {
+                "type": "string",
+                "description": "Configuration file path"
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true
+              }
+            },
+            "required": ["name"],
+            "additionalProperties": false
+          }
+        },
+        "ignorePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Files and directories to ignore"
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "array", "object"]
+          },
+          "description": "Linting rules configuration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "formatting": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "tool": {
+          "type": "string",
+          "description": "Formatting tool name"
+        },
+        "config": {
+          "type": "string",
+          "description": "Formatter configuration file"
+        },
+        "onSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Format on save"
+        },
+        "rules": {
+          "type": "object",
+          "properties": {
+            "indentSize": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8,
+              "default": 2
+            },
+            "indentStyle": {
+              "type": "string",
+              "enum": ["spaces", "tabs"],
+              "default": "spaces"
+            },
+            "maxLineLength": {
+              "type": "integer",
+              "minimum": 40,
+              "maximum": 200,
+              "default": 100
+            },
+            "insertFinalNewline": {
+              "type": "boolean",
+              "default": true
+            },
+            "trimTrailingWhitespace": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "deployment": {
+      "type": "object",
+      "properties": {
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Environment name"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Environment URL"
+              },
+              "branch": {
+                "type": "string",
+                "description": "Git branch for deployment"
+              },
+              "auto": {
+                "type": "boolean",
+                "default": false,
+                "description": "Automatic deployment"
+              }
+            },
+            "required": ["name"],
+            "additionalProperties": false
+          }
+        },
+        "strategy": {
+          "type": "string",
+          "enum": ["manual", "ci", "gitops"],
+          "description": "Deployment strategy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "documentation": {
+      "type": "object",
+      "properties": {
+        "generator": {
+          "type": "string",
+          "description": "Documentation generator tool"
+        },
+        "source": {
+          "type": "string",
+          "description": "Documentation source directory"
+        },
+        "output": {
+          "type": "string",
+          "description": "Documentation output directory"
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["html", "pdf", "markdown"]
+          },
+          "description": "Documentation output formats"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ci": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["github-actions", "gitlab-ci", "jenkins", "circleci", "travis", "custom"],
+          "description": "CI/CD provider"
+        },
+        "config": {
+          "type": "string",
+          "description": "CI configuration file path"
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["push", "pull-request", "tag", "schedule"]
+          },
+          "description": "CI trigger events"
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "commands": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "parallel": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "required": ["name", "commands"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "manager": {
+          "type": "string",
+          "description": "Dependency manager"
+        },
+        "lockfile": {
+          "type": "string",
+          "description": "Lock file path"
+        },
+        "autoUpdate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatic dependency updates"
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "scanEnabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "allowedLicenses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "blockedPackages": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["version", "name"],
+  "additionalProperties": false
+}

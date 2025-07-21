@@ -1,0 +1,113 @@
+{
+  "version": "1.0",
+  "name": "claude-dev-tools",
+  "description": "Essential development tools and prompts for Claude Code users",
+  "author": "Gismo Team",
+  "homepage": "https://gismo.run/packages/claude-dev-tools",
+  "license": "MIT",
+  "gismo": {
+    "minVersion": "0.3.0"
+  },
+  "dependencies": [],
+  "components": {
+    "prompts": {
+      "code-review": {
+        "source": "prompts/code-review.md",
+        "target": "prompts/code-review.md",
+        "type": "command",
+        "description": "Comprehensive code review prompt with best practices"
+      },
+      "refactor": {
+        "source": "prompts/refactor.md", 
+        "target": "prompts/refactor.md",
+        "type": "command",
+        "description": "Smart refactoring prompt for code improvements"
+      },
+      "debug": {
+        "source": "prompts/debug.md",
+        "target": "prompts/debug.md", 
+        "type": "command",
+        "description": "Systematic debugging prompt for issue resolution"
+      },
+      "test-gen": {
+        "source": "prompts/test-gen.md",
+        "target": "prompts/test-gen.md",
+        "type": "command", 
+        "description": "Intelligent test generation for comprehensive coverage"
+      }
+    },
+    "tools": {
+      "json-formatter": {
+        "source": "tools/json-formatter.go",
+        "target": "bin/json-formatter",
+        "type": "go-binary",
+        "build": "go build -o json-formatter tools/json-formatter.go",
+        "executable": true,
+        "description": "Fast JSON formatting and validation tool"
+      },
+      "git-stats": {
+        "source": "tools/git-stats.go", 
+        "target": "bin/git-stats",
+        "type": "go-binary",
+        "build": "go build -o git-stats tools/git-stats.go",
+        "executable": true,
+        "description": "Git repository statistics and analysis"
+      }
+    },
+    "scripts": {
+      "setup-dev": {
+        "source": "scripts/setup-dev.sh",
+        "target": "scripts/setup-dev.sh", 
+        "type": "shell-script",
+        "executable": true,
+        "description": "Development environment setup automation"
+      },
+      "quick-commit": {
+        "source": "scripts/quick-commit.sh",
+        "target": "scripts/quick-commit.sh",
+        "type": "shell-script", 
+        "executable": true,
+        "description": "Smart git commit with automatic message generation"
+      }
+    },
+    "linters": {
+      "markdown-lint": {
+        "source": "linters/markdown-lint.go",
+        "target": "linters/markdown-lint",
+        "type": "go-linter",
+        "build": "go build -o markdown-lint linters/markdown-lint.go", 
+        "executable": true,
+        "extensions": [".md", ".markdown"],
+        "priority": 10,
+        "description": "Markdown linting with style and link checking"
+      }
+    },
+    "configs": {
+      "dev-settings": {
+        "source": "configs/dev-settings.json",
+        "target": "dev-settings.json",
+        "type": "config",
+        "description": "Recommended development settings for Claude Code"
+      }
+    },
+    "schemas": {
+      "project-config": {
+        "source": "schemas/project-config.schema.json", 
+        "target": "schemas/project-config.schema.json",
+        "type": "schema",
+        "description": "JSON schema for project configuration files"
+      }
+    }
+  },
+  "hooks": {
+    "postInstall": "echo 'Claude Dev Tools installed! Run: gismo show config to see new settings'",
+    "preRemove": "echo 'Removing Claude Dev Tools...'"
+  },
+  "config": {
+    "schema": "schemas/project-config.schema.json",
+    "default": {
+      "enableAutoFormat": true,
+      "strictLinting": false
+    }
+  }
+}

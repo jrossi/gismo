@@ -1,0 +1,127 @@
+{
+  "version": "1.0",
+  "description": "Recommended development settings for Claude Code",
+  "settings": {
+    "editor": {
+      "formatOnSave": true,
+      "insertFinalNewline": true,
+      "trimTrailingWhitespace": true,
+      "tabSize": 2,
+      "indentStyle": "spaces"
+    },
+    "linting": {
+      "enableAutoLint": true,
+      "lintOnSave": true,
+      "strictMode": false,
+      "ignorePatterns": [
+        "node_modules/",
+        "vendor/",
+        "dist/",
+        "build/",
+        ".git/"
+      ]
+    },
+    "git": {
+      "autoStage": false,
+      "commitTemplate": "type(scope): description\n\n- Detail 1\n- Detail 2",
+      "enforceCommitFormat": true,
+      "hooks": {
+        "preCommit": true,
+        "commitMsg": true
+      }
+    },
+    "debugging": {
+      "logLevel": "info",
+      "enableSourceMaps": true,
+      "breakOnExceptions": false,
+      "showInlineValues": true
+    },
+    "performance": {
+      "enableCaching": true,
+      "maxCacheSize": "100MB",
+      "gcInterval": "5m",
+      "enableProfiling": false
+    },
+    "security": {
+      "scanForSecrets": true,
+      "enforceHttps": true,
+      "requireSignedCommits": false,
+      "allowedDomains": [
+        "github.com",
+        "gitlab.com",
+        "api.claude.ai"
+      ]
+    },
+    "ai": {
+      "enableCodeCompletion": true,
+      "enableCodeReview": true,
+      "confidenceThreshold": 0.8,
+      "maxSuggestions": 5,
+      "languages": [
+        "go",
+        "javascript",
+        "typescript",
+        "python",
+        "rust",
+        "java"
+      ]
+    },
+    "workflows": {
+      "autoSave": {
+        "enabled": true,
+        "interval": "30s"
+      },
+      "autoTest": {
+        "enabled": false,
+        "onSave": false,
+        "onCommit": true
+      },
+      "autoFormat": {
+        "enabled": true,
+        "onSave": true,
+        "onPaste": false
+      }
+    },
+    "notifications": {
+      "enableDesktop": true,
+      "enableSound": false,
+      "level": "important",
+      "categories": {
+        "errors": true,
+        "warnings": false,
+        "info": false,
+        "success": true
+      }
+    }
+  },
+  "profiles": {
+    "development": {
+      "linting.strictMode": false,
+      "debugging.logLevel": "debug",
+      "performance.enableProfiling": true
+    },
+    "production": {
+      "linting.strictMode": true,
+      "debugging.logLevel": "error",
+      "performance.enableProfiling": false,
+      "security.requireSignedCommits": true
+    },
+    "team": {
+      "git.enforceCommitFormat": true,
+      "workflows.autoTest.onCommit": true,
+      "security.scanForSecrets": true
+    }
+  },
+  "extensions": {
+    "recommended": [
+      "claude-code.go-tools",
+      "claude-code.git-integration",
+      "claude-code.markdown-preview"
+    ],
+    "optional": [
+      "claude-code.performance-monitor",
+      "claude-code.theme-pack",
+      "claude-code.advanced-search"
+    ]
+  }
+}
