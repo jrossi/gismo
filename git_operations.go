@@ -282,11 +282,11 @@ func ExtractRepoName(gitURL string) string {
 func ExtractNamespacePath(gitURL string) string {
 	// Normalize URL first
 	url := NormalizeGitURL(gitURL)
-	
+
 	// Remove protocol
 	url = strings.TrimPrefix(url, "https://")
 	url = strings.TrimPrefix(url, "http://")
-	
+
 	// Return full path for namespacing
 	return url
 }
