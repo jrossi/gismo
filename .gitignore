@@ -2,6 +2,8 @@
 gismo
 gismo-init
 gismo-show
+gismo-package
+gismo-registry
 *.exe
 *.dll
 *.so
@@ -11,6 +13,9 @@ gismo-show
 *.test
 *.out
 coverage.html
+coverage.out
+*.prof
+*.pprof
 
 # IDE files
 .idea/
@@ -30,3 +35,11 @@ Thumbs.db
 
 # Temporary files
 *.tmp
+
+# Development tools and configuration
+.mcp.json
+*.mcp.json
+.serena/
+
+# Log files
+*.log
