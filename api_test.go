@@ -44,7 +44,7 @@ func TestAPI_ProcessStdin(t *testing.T) {
 	defer func() { os.Stdin = oldStdin }()
 
 	// Create test input
-	input := `{"hook_event_name":"PreToolUse","session_id":"test","tool_name":"Write","tool_input":{"file_path":"test.go","content":"package main"}}`
+	input := `{"hook_event_name":"PreToolUse","session_id":"test","tool_name":"Write","tool_input":{"file_path":"test.go","content":"package main\n"}}`
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestAPI_ProcessMessage(t *testing.T) {
 		ToolName: "Write",
 		ToolInput: testConvertToRawMessage(map[string]interface{}{
 			"file_path": "test.go",
-			"content":   "package main",
+			"content":   "package main\n",
 		}),
 	}
 
@@ -385,7 +385,7 @@ func TestAPI_CompleteWorkflow(t *testing.T) {
 		ToolName: "Write",
 		ToolInput: testConvertToRawMessage(map[string]interface{}{
 			"file_path": "test.go",
-			"content":   "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello\")\n}",
+			"content":   "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello\")\n}\n",
 		}),
 	}
 

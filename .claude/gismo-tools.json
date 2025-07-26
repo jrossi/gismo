@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2025-07-21T11:03:10.795026-04:00",
+  "lastUpdated": "2025-07-26T08:09:18.81863-04:00",
   "gitRoot": "/Users/jrossi/src/gismo/.claude",
   "hostname": "SSNC-HGTJYHKJ7T",
   "tools": {
@@ -9,21 +9,21 @@
       "biome": {
         "path": "",
         "available": false,
-        "lastCheck": "2025-07-21T11:03:10.780842-04:00",
+        "lastCheck": "2025-07-26T08:09:18.771822-04:00",
         "source": "",
         "modTime": "0001-01-01T00:00:00Z"
       },
       "oxlint": {
         "path": "",
         "available": false,
-        "lastCheck": "2025-07-21T11:03:10.785011-04:00",
+        "lastCheck": "2025-07-26T08:09:18.799836-04:00",
         "source": "",
         "modTime": "0001-01-01T00:00:00Z"
       },
       "eslint": {
         "path": "",
         "available": false,
-        "lastCheck": "2025-07-21T11:03:10.790968-04:00",
+        "lastCheck": "2025-07-26T08:09:18.812294-04:00",
         "source": "",
         "modTime": "0001-01-01T00:00:00Z"
       }

@@ -21,7 +21,7 @@ func TestHandler_ProcessInput(t *testing.T) {
 	defer func() { os.Stdin = oldStdin }()
 
 	// Create test input
-	input := `{"hook_event_name":"PreToolUse","session_id":"test","tool_name":"Write","tool_input":{"file_path":"test.go","content":"package main"}}`
+	input := `{"hook_event_name":"PreToolUse","session_id":"test","tool_name":"Write","tool_input":{"file_path":"test.go","content":"package main\n"}}`
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)

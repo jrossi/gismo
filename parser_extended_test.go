@@ -80,7 +80,7 @@ func TestParser_ParseHookMessage_AllMessageTypes(t *testing.T) {
 				"tool_name": "Write",
 				"tool_input": {
 					"file_path": "/test.go",
-					"content": "package main",
+					"content": "package main\n",
 					"nested": {
 						"deeply": {
 							"nested": "value"
@@ -184,7 +184,7 @@ func TestParser_MarshalHookMessage(t *testing.T) {
 				ToolName: "Write",
 				ToolInput: testConvertToRawMessage(map[string]interface{}{
 					"file_path": "test.go",
-					"content":   "package main",
+					"content":   "package main\n",
 				}),
 			},
 		},

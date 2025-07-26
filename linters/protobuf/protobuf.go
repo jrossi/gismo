@@ -333,9 +333,15 @@ func (l *ProtobufLinter) runProtoc(ctx context.Context, filePath string) error {
 		return fmt.Errorf("protoc not found")
 	}
 
-	// Build protoc arguments
+	// Build protoc arguments for syntax checking only
+	// Use --descriptor_set_out to /dev/null or temp file for syntax validation
+	// This prevents the "Missing output directives" error
+	tempFile := filepath.Join(os.TempDir(), "protoc_check.pb")
+	defer os.Remove(tempFile) // Clean up temp file
+
 	args := []string{
 		"--proto_path=" + filepath.Dir(filePath),
+		"--descriptor_set_out=" + tempFile,
 		filePath,
 	}
 
