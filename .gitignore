@@ -39,7 +39,7 @@ Thumbs.db
 # Development tools and configuration
 .mcp.json
 *.mcp.json
-.serena/
+.serena/cache/
 
 # Log files
 *.log
