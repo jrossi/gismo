@@ -350,6 +350,16 @@ func (e *LintingRuleEngine) EvaluatePreCompact(ctx context.Context, msg *PreComp
 	return nil, nil
 }
 
+// EvaluateUserPromptSubmit handles user prompt submit events
+func (e *LintingRuleEngine) EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	return nil, nil
+}
+
+// EvaluateSessionStart handles session start events
+func (e *LintingRuleEngine) EvaluateSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error) {
+	return nil, nil
+}
+
 // formatLintOutput formats linting issues in a style similar to smart-lint.sh
 func (e *LintingRuleEngine) formatLintOutput(filePath string, issues []linters.Issue, isBlocking bool) string {
 	var output strings.Builder

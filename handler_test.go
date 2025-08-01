@@ -61,6 +61,14 @@ func (m *MockRuleEngine) EvaluatePreCompact(ctx context.Context, msg *PreCompact
 	return m.preCompactResponse, nil
 }
 
+func (m *MockRuleEngine) EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	return nil, nil
+}
+
+func (m *MockRuleEngine) EvaluateSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error) {
+	return nil, nil
+}
+
 func TestHandler_ProcessMessage(t *testing.T) {
 	tests := []struct {
 		name        string

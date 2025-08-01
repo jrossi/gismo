@@ -12,12 +12,14 @@ type HookMessage interface {
 type HookEventName string
 
 const (
-	PreToolUseEvent   HookEventName = "PreToolUse"
-	PostToolUseEvent  HookEventName = "PostToolUse"
-	NotificationEvent HookEventName = "Notification"
-	StopEvent         HookEventName = "Stop"
-	SubagentStopEvent HookEventName = "SubagentStop"
-	PreCompactEvent   HookEventName = "PreCompact"
+	PreToolUseEvent       HookEventName = "PreToolUse"
+	PostToolUseEvent      HookEventName = "PostToolUse"
+	NotificationEvent     HookEventName = "Notification"
+	StopEvent             HookEventName = "Stop"
+	SubagentStopEvent     HookEventName = "SubagentStop"
+	PreCompactEvent       HookEventName = "PreCompact"
+	UserPromptSubmitEvent HookEventName = "UserPromptSubmit"
+	SessionStartEvent     HookEventName = "SessionStart"
 )
 
 // BaseHookMessage contains common fields for all hook messages
@@ -87,6 +89,26 @@ type PreCompactMessage struct {
 	CurrentTokens int `json:"current_tokens"`
 	TargetTokens  int `json:"target_tokens"`
 }
+
+// UserPromptSubmitMessage is sent when user submits a prompt
+type UserPromptSubmitMessage struct {
+	BaseHookMessage
+	UserPrompt string `json:"user_prompt"`
+	Timestamp  int64  `json:"timestamp"`
+}
+
+func (m UserPromptSubmitMessage) GetBaseMessage() BaseHookMessage { return m.BaseHookMessage }
+func (m UserPromptSubmitMessage) EventName() HookEventName        { return UserPromptSubmitEvent }
+
+// SessionStartMessage is sent when a new Claude session begins
+type SessionStartMessage struct {
+	BaseHookMessage
+	Timestamp int64  `json:"timestamp"`
+	UserID    string `json:"user_id,omitempty"`
+}
+
+func (m SessionStartMessage) GetBaseMessage() BaseHookMessage { return m.BaseHookMessage }
+func (m SessionStartMessage) EventName() HookEventName        { return SessionStartEvent }
 
 func (m PreCompactMessage) GetBaseMessage() BaseHookMessage { return m.BaseHookMessage }
 func (m PreCompactMessage) EventName() HookEventName        { return PreCompactEvent }

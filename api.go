@@ -186,3 +186,11 @@ func (e *blockingEngine) EvaluateSubagentStop(ctx context.Context, msg *Subagent
 func (e *blockingEngine) EvaluatePreCompact(ctx context.Context, msg *PreCompactMessage) (*HookResponse, error) {
 	return nil, nil
 }
+
+func (e *blockingEngine) EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	return nil, nil
+}
+
+func (e *blockingEngine) EvaluateSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error) {
+	return nil, nil
+}

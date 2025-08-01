@@ -33,6 +33,14 @@ func (e *errorRuleEngine) EvaluatePreCompact(ctx context.Context, msg *PreCompac
 	return nil, errors.New("pre compact error")
 }
 
+func (e *errorRuleEngine) EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	return nil, errors.New("user prompt submit error")
+}
+
+func (e *errorRuleEngine) EvaluateSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error) {
+	return nil, errors.New("session start error")
+}
+
 func TestCompositeRuleEngine_ErrorHandling(t *testing.T) {
 	composite := NewCompositeRuleEngine()
 	composite.AddEngine(&errorRuleEngine{})
@@ -170,6 +178,14 @@ func (e *customRuleEngine) EvaluateSubagentStop(ctx context.Context, msg *Subage
 
 func (e *customRuleEngine) EvaluatePreCompact(ctx context.Context, msg *PreCompactMessage) (*HookResponse, error) {
 	return e.compactResponse, nil
+}
+
+func (e *customRuleEngine) EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	return nil, nil
+}
+
+func (e *customRuleEngine) EvaluateSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error) {
+	return nil, nil
 }
 
 func TestCompositeRuleEngine_MultipleEngines(t *testing.T) {

@@ -97,6 +97,10 @@ func (h *Handler) ProcessMessage(ctx context.Context, msg HookMessage) (*HookRes
 		return h.handleSubagentStop(ctx, m)
 	case *PreCompactMessage:
 		return h.handlePreCompact(ctx, m)
+	case *UserPromptSubmitMessage:
+		return h.handleUserPromptSubmit(ctx, m)
+	case *SessionStartMessage:
+		return h.handleSessionStart(ctx, m)
 	default:
 		return nil, fmt.Errorf("unknown message type: %T", msg)
 	}
@@ -154,6 +158,16 @@ func (h *Handler) handleSubagentStop(ctx context.Context, msg *SubagentStopMessa
 func (h *Handler) handlePreCompact(ctx context.Context, msg *PreCompactMessage) (*HookResponse, error) {
 	// Process pre-compact event through rule engine
 	return h.ruleEngine.EvaluatePreCompact(ctx, msg)
+}
+
+func (h *Handler) handleUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	// Process user prompt submit through rule engine
+	return h.ruleEngine.EvaluateUserPromptSubmit(ctx, msg)
+}
+
+func (h *Handler) handleSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error) {
+	// Process session start through rule engine
+	return h.ruleEngine.EvaluateSessionStart(ctx, msg)
 }
 
 // Registry manages hook configurations

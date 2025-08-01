@@ -23,6 +23,12 @@ type RuleEngine interface {
 
 	// EvaluatePreCompact processes before context compression
 	EvaluatePreCompact(ctx context.Context, msg *PreCompactMessage) (*HookResponse, error)
+
+	// EvaluateUserPromptSubmit processes when user submits a prompt
+	EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error)
+
+	// EvaluateSessionStart processes when a new Claude session begins
+	EvaluateSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error)
 }
 
 // BaseRuleEngine provides a default implementation of RuleEngine
@@ -67,6 +73,18 @@ func (e *BaseRuleEngine) EvaluateSubagentStop(ctx context.Context, msg *Subagent
 
 // EvaluatePreCompact provides default pre-compact evaluation
 func (e *BaseRuleEngine) EvaluatePreCompact(ctx context.Context, msg *PreCompactMessage) (*HookResponse, error) {
+	// Default: continue without modification
+	return nil, nil
+}
+
+// EvaluateUserPromptSubmit provides default user prompt submit evaluation
+func (e *BaseRuleEngine) EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	// Default: continue without modification
+	return nil, nil
+}
+
+// EvaluateSessionStart provides default session start evaluation
+func (e *BaseRuleEngine) EvaluateSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error) {
 	// Default: continue without modification
 	return nil, nil
 }
@@ -162,6 +180,34 @@ func (c *CompositeRuleEngine) EvaluateSubagentStop(ctx context.Context, msg *Sub
 func (c *CompositeRuleEngine) EvaluatePreCompact(ctx context.Context, msg *PreCompactMessage) (*HookResponse, error) {
 	for _, engine := range c.engines {
 		response, err := engine.EvaluatePreCompact(ctx, msg)
+		if err != nil {
+			return nil, err
+		}
+		if response != nil {
+			return response, nil
+		}
+	}
+	return nil, nil
+}
+
+// EvaluateUserPromptSubmit runs all engines and returns the first non-nil response
+func (c *CompositeRuleEngine) EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	for _, engine := range c.engines {
+		response, err := engine.EvaluateUserPromptSubmit(ctx, msg)
+		if err != nil {
+			return nil, err
+		}
+		if response != nil {
+			return response, nil
+		}
+	}
+	return nil, nil
+}
+
+// EvaluateSessionStart runs all engines and returns the first non-nil response
+func (c *CompositeRuleEngine) EvaluateSessionStart(ctx context.Context, msg *SessionStartMessage) (*HookResponse, error) {
+	for _, engine := range c.engines {
+		response, err := engine.EvaluateSessionStart(ctx, msg)
 		if err != nil {
 			return nil, err
 		}
