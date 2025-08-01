@@ -90,21 +90,25 @@ type PreCompactMessage struct {
 	TargetTokens  int `json:"target_tokens"`
 }
 
-// UserPromptSubmitMessage is sent when user submits a prompt
+// UserPromptSubmitMessage is sent when user submits a prompt.
+// This hook is useful for input validation, logging user interactions,
+// or preprocessing prompts before they are processed by Claude.
 type UserPromptSubmitMessage struct {
 	BaseHookMessage
-	UserPrompt string `json:"user_prompt"`
-	Timestamp  int64  `json:"timestamp"`
+	UserPrompt string `json:"user_prompt"` // The submitted user prompt text
+	Timestamp  int64  `json:"timestamp"`   // Unix timestamp when prompt was submitted
 }
 
 func (m UserPromptSubmitMessage) GetBaseMessage() BaseHookMessage { return m.BaseHookMessage }
 func (m UserPromptSubmitMessage) EventName() HookEventName        { return UserPromptSubmitEvent }
 
-// SessionStartMessage is sent when a new Claude session begins
+// SessionStartMessage is sent when a new Claude session begins.
+// This hook is useful for initialization tasks, setup operations,
+// or displaying welcome messages to users.
 type SessionStartMessage struct {
 	BaseHookMessage
-	Timestamp int64  `json:"timestamp"`
-	UserID    string `json:"user_id,omitempty"`
+	Timestamp int64  `json:"timestamp"`         // Unix timestamp when session started
+	UserID    string `json:"user_id,omitempty"` // Optional user identifier
 }
 
 func (m SessionStartMessage) GetBaseMessage() BaseHookMessage { return m.BaseHookMessage }
