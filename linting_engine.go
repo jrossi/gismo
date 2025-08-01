@@ -16,6 +16,7 @@ import (
 	"github.com/jrossi/gismo/linters/protobuf"
 	"github.com/jrossi/gismo/linters/python"
 	"github.com/jrossi/gismo/linters/rust"
+	"github.com/jrossi/gismo/linters/secrets"
 )
 
 // LintingRuleEngine implements RuleEngine to provide linting functionality
@@ -61,6 +62,7 @@ func NewLintingRuleEngineWithConfig(config LintingConfig) *LintingRuleEngine {
 	engine.linters = append(engine.linters, protobuf.NewProtobufLinter())
 	engine.linters = append(engine.linters, python.NewPythonLinter())
 	engine.linters = append(engine.linters, rust.NewRustLinter())
+	// Note: secrets linter is only added when explicitly enabled in config
 
 	return engine
 }
@@ -73,6 +75,22 @@ func (e *LintingRuleEngine) AddLinter(linter linters.Linter) {
 // SetAppConfig sets the application configuration
 func (e *LintingRuleEngine) SetAppConfig(config *AppConfig) {
 	e.config = config
+
+	// Add secrets linter only if explicitly enabled (opt-in only)
+	if config != nil && e.isSecretsLinterExplicitlyEnabled(config) {
+		// Check if secrets linter is already present
+		hasSecretsLinter := false
+		for _, linter := range e.linters {
+			if linter.Name() == "secrets" {
+				hasSecretsLinter = true
+				break
+			}
+		}
+		// Add secrets linter if not already present
+		if !hasSecretsLinter {
+			e.linters = append(e.linters, secrets.NewSecretLinter())
+		}
+	}
 
 	// Update linter configurations
 	if config != nil {
@@ -99,6 +117,22 @@ func (e *LintingRuleEngine) SetAppConfig(config *AppConfig) {
 // GetAppConfig returns the application configuration
 func (e *LintingRuleEngine) GetAppConfig() *AppConfig {
 	return e.config
+}
+
+// isSecretsLinterExplicitlyEnabled checks if the secrets linter is explicitly enabled in config
+// Unlike IsLinterEnabled, this method requires explicit opt-in and doesn't default to enabled
+func (e *LintingRuleEngine) isSecretsLinterExplicitlyEnabled(config *AppConfig) bool {
+	if config == nil || config.Linters == nil {
+		return false // secrets linter is opt-in only
+	}
+	linterConfig, ok := config.Linters["secrets"]
+	if !ok {
+		return false // no config means not enabled
+	}
+	if linterConfig.Enabled == nil {
+		return false // no explicit enabled flag means not enabled for secrets
+	}
+	return *linterConfig.Enabled
 }
 
 // ConfigurableLinter is an interface for linters that support runtime configuration
@@ -352,7 +386,56 @@ func (e *LintingRuleEngine) EvaluatePreCompact(ctx context.Context, msg *PreComp
 
 // EvaluateUserPromptSubmit handles user prompt submit events
 func (e *LintingRuleEngine) EvaluateUserPromptSubmit(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
-	return nil, nil
+	return e.detectSecretsInPrompt(ctx, msg)
+}
+
+// detectSecretsInPrompt scans user prompt for secrets using the secret linter
+func (e *LintingRuleEngine) detectSecretsInPrompt(ctx context.Context, msg *UserPromptSubmitMessage) (*HookResponse, error) {
+	// Find the secrets linter in our linters list
+	var secretLinter *secrets.SecretLinter
+	for _, linter := range e.linters {
+		if sl, ok := linter.(*secrets.SecretLinter); ok {
+			secretLinter = sl
+			break
+		}
+	}
+
+	if secretLinter == nil {
+		// No secret linter configured, approve by default
+		return &HookResponse{Decision: "approve"}, nil
+	}
+
+	// Scan the prompt using the secret linter
+	result, err := secretLinter.ScanPrompt(msg.UserPrompt)
+	if err != nil {
+		// If scanning fails, log but don't block
+		fmt.Fprintf(os.Stderr, "\n> Secret detection warning: %v\n", err)
+		return &HookResponse{Decision: "approve"}, nil
+	}
+
+	if len(result.Issues) == 0 {
+		return &HookResponse{Decision: "approve"}, nil
+	}
+
+	// Format findings for user
+	var details strings.Builder
+	details.WriteString("Found potential secrets in your prompt:\n")
+	for i, issue := range result.Issues {
+		if i > 0 {
+			details.WriteString("\n")
+		}
+		details.WriteString(fmt.Sprintf("  - %s: %s (line %d)",
+			issue.Rule, issue.Message, issue.Line))
+	}
+	details.WriteString("\n\nTo override this check, include 'secret_detect=override' in your prompt.")
+
+	// Write detailed feedback to stderr
+	fmt.Fprintf(os.Stderr, "\n> Prompt security check:\n%s\n", details.String())
+
+	return &HookResponse{
+		Decision: "block",
+		Reason:   fmt.Sprintf("Found %d potential secret(s) in prompt", len(result.Issues)),
+	}, nil
 }
 
 // EvaluateSessionStart handles session start events
