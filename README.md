@@ -321,6 +321,37 @@ The library supports all Claude Code hook types:
 - `SubagentStop`: Subagent completion
 - `PreCompact`: Before context compression
 
+## Environment Variable Support
+
+Gismo supports environment variable expansion in hook command paths, following Claude Code conventions:
+
+**Supported Variables:**
+- `$CLAUDE_PROJECT_DIR`: Expands to the current working directory (project root)
+- Standard environment variables: `$HOME`, `$USER`, `$PATH`, etc.
+
+**Example Configurations:**
+```json
+{
+  "PreToolUse": [
+    {
+      "command": "$CLAUDE_PROJECT_DIR/scripts/pre-commit.sh",
+      "tool_patterns": ["Write", "Edit"]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "command": "$HOME/.local/bin/gismo",
+      "tool_patterns": ["Write", "Edit", "MultiEdit"]
+    }
+  ]
+}
+```
+
+**Benefits:**
+- **Portable configurations**: Works across different machines and users
+- **Project-relative paths**: `$CLAUDE_PROJECT_DIR` ensures hooks run from project context
+- **Flexible deployment**: Same configuration works in different environments
+
 ## Performance
 
 Benchmarks show excellent performance across all components:

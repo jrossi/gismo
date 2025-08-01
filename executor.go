@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -122,13 +123,29 @@ func NewHookRunner(timeout time.Duration) *HookRunner {
 	}
 }
 
+// expandEnvVars expands environment variables in hook command paths
+// Supports $CLAUDE_PROJECT_DIR and standard environment variables
+func expandEnvVars(hookPath string) string {
+	// Replace $CLAUDE_PROJECT_DIR with current working directory
+	// This follows Claude Code's convention where hooks run in project context
+	if wd, err := os.Getwd(); err == nil {
+		hookPath = strings.ReplaceAll(hookPath, "$CLAUDE_PROJECT_DIR", wd)
+	}
+
+	// Expand other standard environment variables
+	return os.ExpandEnv(hookPath)
+}
+
 // RunHook executes an external hook program
 func (r *HookRunner) RunHook(ctx context.Context, hookPath string, input []byte) ([]byte, error) {
+	// Expand environment variables in hook path
+	expandedPath := expandEnvVars(hookPath)
+
 	// Create command with timeout context
 	timeoutCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(timeoutCtx, hookPath)
+	cmd := exec.CommandContext(timeoutCtx, expandedPath)
 
 	// Set up pipes
 	stdin, err := cmd.StdinPipe()

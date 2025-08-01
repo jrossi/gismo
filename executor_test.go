@@ -458,6 +458,145 @@ done
 	}
 }
 
+func TestExpandEnvVars(t *testing.T) {
+	// Save original working directory and environment
+	originalWd, _ := os.Getwd()
+	originalPath := os.Getenv("PATH")
+	defer func() {
+		_ = os.Chdir(originalWd)
+		os.Setenv("PATH", originalPath)
+	}()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		setEnv   map[string]string
+		setWd    string
+	}{
+		{
+			name:     "no_variables",
+			input:    "/usr/bin/gismo",
+			expected: "/usr/bin/gismo",
+		},
+		{
+			name:     "claude_project_dir",
+			input:    "$CLAUDE_PROJECT_DIR/hooks/test.sh",
+			expected: "/test/project/hooks/test.sh",
+			setWd:    "/test/project",
+		},
+		{
+			name:     "claude_project_dir_with_other_env",
+			input:    "$CLAUDE_PROJECT_DIR/bin/$USER/tool",
+			expected: "/current/dir/bin/testuser/tool",
+			setWd:    "/current/dir",
+			setEnv:   map[string]string{"USER": "testuser"},
+		},
+		{
+			name:     "standard_env_vars",
+			input:    "$HOME/bin/tool",
+			expected: "/home/user/bin/tool",
+			setEnv:   map[string]string{"HOME": "/home/user"},
+		},
+		{
+			name:     "multiple_env_vars",
+			input:    "$HOME/$USER/bin/$TOOL",
+			expected: "/home/testuser/testuser/bin/mytool",
+			setEnv:   map[string]string{"HOME": "/home/testuser", "USER": "testuser", "TOOL": "mytool"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment
+			if tt.setWd != "" {
+				// Create temporary directory for test
+				tmpDir, err := os.MkdirTemp("", "envtest_")
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer os.RemoveAll(tmpDir)
+
+				// Use tmpDir as our mock working directory path
+				_ = os.Chdir(tmpDir)
+				tt.expected = strings.ReplaceAll(tt.expected, tt.setWd, tmpDir)
+			}
+
+			for key, value := range tt.setEnv {
+				os.Setenv(key, value)
+				defer os.Unsetenv(key)
+			}
+
+			result := expandEnvVars(tt.input)
+
+			// Handle macOS /private prefix in temp directories
+			if tt.setWd != "" {
+				wd, _ := os.Getwd()
+				expectedWithActualWd := strings.ReplaceAll(tt.input, "$CLAUDE_PROJECT_DIR", wd)
+				expectedWithActualWd = os.ExpandEnv(expectedWithActualWd)
+				if result != expectedWithActualWd {
+					t.Errorf("expandEnvVars(%q) = %q, want %q", tt.input, result, expectedWithActualWd)
+				}
+			} else if result != tt.expected {
+				t.Errorf("expandEnvVars(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestHookRunner_RunHook_WithEnvVars(t *testing.T) {
+	// Create a temporary directory structure
+	tmpDir, err := os.MkdirTemp("", "hook_env_test_")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create hooks subdirectory
+	hooksDir := filepath.Join(tmpDir, "hooks")
+	if err := os.MkdirAll(hooksDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create test script in hooks directory
+	scriptPath := filepath.Join(hooksDir, "test.sh")
+	scriptContent := `#!/bin/sh
+echo "Hook executed from: $(pwd)"
+echo "Script path: $0"
+cat
+`
+	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Change to temp directory to simulate project context
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tmpDir)
+
+	runner := NewHookRunner(5 * time.Second)
+	ctx := context.Background()
+
+	// Test with $CLAUDE_PROJECT_DIR variable
+	hookPath := "$CLAUDE_PROJECT_DIR/hooks/test.sh"
+	input := []byte("test input from environment variable test")
+
+	output, err := runner.RunHook(ctx, hookPath, input)
+	if err != nil {
+		t.Fatalf("RunHook() error = %v", err)
+	}
+
+	// Check that the hook was executed
+	outputStr := string(output)
+	if !strings.Contains(outputStr, "Hook executed from:") {
+		t.Errorf("Expected hook execution output, got %s", outputStr)
+	}
+
+	if !strings.Contains(outputStr, "test input from environment variable test") {
+		t.Errorf("Expected input to be echoed back, got %s", outputStr)
+	}
+}
+
 func TestChainExecutor(t *testing.T) {
 	// Create multiple executors
 	executor1 := NewExecutor(NewBaseRuleEngine())
