@@ -1,22 +1,34 @@
-# Gismo - Claude Code Hooks Library
+# Gismo - Extensible Claude Code Hooks Library
 
-A high-performance Go library and CLI tool for handling Claude Code hooks with built-in linting capabilities.
-Features automatic Go file formatting validation and test running. Built with
-[go-json](https://github.com/goccy/go-json) for optimal JSON parsing performance.
+A high-performance Go library and CLI tool providing an extensible action handler architecture for Claude Code hooks.
+Features security-first policy enforcement, configurable rule engines, and comprehensive protection across all interaction points.
+Built with [go-json](https://github.com/goccy/go-json) for optimal JSON parsing performance.
 
 ## Features
 
+### 🏗️ **Extensible Action Handler Architecture**
+- **Security-First Design**: Priority-based handler execution with security handlers running first
+- **Pluggable Handlers**: Easy to add custom handlers for any hook type
+- **Configurable Policies**: Rule-based pattern matching and conditional execution
+- **All Hook Types**: Supports PreToolUse, PostToolUse, UserPromptSubmit, Notification, and more
+
+### 🔒 **Built-in Security Handlers**
+- **File Access Control**: Block reading PEM certificates, restrict system directory writes
+- **Secret Detection**: Prevent secrets in prompts and files using Gitleaks integration
+- **Regex Pattern Matching**: Configurable content filtering with multiple actions
+- **Path-based Restrictions**: Granular control over file system access
+
+### ⚡ **Performance & Quality**
 - **Enhanced Go Linting**: golangci-lint integration with 30+ fast linters and intelligent fallback
-- **Comprehensive Analysis**: Runs gosimple, ineffassign, gofmt, goimports, and many more linters
-- **Fast Mode Optimization**: Uses golangci-lint's `--fast` flag for optimal individual file performance
-- **Configuration Support**: Respects custom `.golangci.yml` configuration files
-- **Module-Aware**: Correctly detects Go module roots and runs tests from proper directory
 - **High Performance**: Uses go-json for 2-3x faster JSON parsing
-- **Graceful Fallback**: Works even without golangci-lint installed
+- **Parallel Execution**: Concurrent handler processing for optimal speed
+- **Smart Caching**: Efficient rule evaluation and pattern matching
+
+### 🛠️ **Developer Experience**
+- **Comprehensive Analysis**: Runs gosimple, ineffassign, gofmt, goimports, and many more linters
+- **Module-Aware**: Correctly detects Go module roots and runs tests from proper directory
+- **Configuration Support**: Hierarchical config with pattern-based overrides
 - **Fully Typed**: Strong typing for all hook message types
-- **Extensible**: Pluggable linter and rule engine interface
-- **Composable**: Chain multiple rule engines together
-- **CLI Tool**: Ready-to-use command-line tool
 - **Well Tested**: Comprehensive test coverage and benchmarks
 
 ## Installation
@@ -68,6 +80,41 @@ make install
 
 ### As a Library
 
+#### Using the New Action Handler Architecture
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/jrossi/gismo"
+    "github.com/jrossi/gismo/handlers"
+)
+
+func main() {
+    // Create the new action handler engine
+    engine := gismo.NewActionHandlerEngine()
+
+    // Register handlers with priorities (higher = runs first)
+    fileHandler := handlers.NewFileAccessHandler()
+    engine.RegisterHandler(gismo.PreToolUseEvent, fileHandler)
+
+    secretHandler := handlers.NewSecretDetectionHandler()
+    engine.RegisterHandler(gismo.UserPromptSubmitEvent, secretHandler)
+
+    // Create API with action handler engine
+    api := gismo.NewWithRuleEngine(engine)
+
+    // Process stdin (for use as a hook)
+    ctx := context.Background()
+    if err := api.ProcessStdin(ctx); err != nil {
+        // Handle error
+    }
+}
+```
+
+#### Legacy Library Usage
+
 ```go
 package main
 
@@ -77,7 +124,7 @@ import (
 )
 
 func main() {
-    // Create API with default rule engine
+    // Create API with default linting rule engine
     api := gismo.New()
 
     // Or with a custom rule engine
