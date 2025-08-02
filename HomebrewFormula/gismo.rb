@@ -5,13 +5,13 @@
 class Gismo < Formula
   desc "Gismo - Real-time linting feedback for AI code editors"
   homepage "https://gismo.run"
-  version "0.4.0"
+  version "0.4.2"
   license "Apache-2.0"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/jrossi/gismo/releases/download/v0.4.0/gismo_0.4.0_Darwin_x86_64.tar.gz"
-      sha256 "10bc640c43d6cab6309f04a3af14b8744ca5a9618b64c5c853126b4c7e7ae3a3"
+      url "https://github.com/jrossi/gismo/releases/download/v0.4.2/gismo_0.4.2_Darwin_x86_64.tar.gz"
+      sha256 "f89fe8a81b02f229006cd0614fdc50368a35e1e8b2c62e64707d4696e6426567"
 
       def install
         bin.install "gismo"
@@ -22,8 +22,8 @@ class Gismo < Formula
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/jrossi/gismo/releases/download/v0.4.0/gismo_0.4.0_Darwin_arm64.tar.gz"
-      sha256 "54c704820a680b1cccbdeacf85cebff4a73ea055b24a8976168db41566d5eea3"
+      url "https://github.com/jrossi/gismo/releases/download/v0.4.2/gismo_0.4.2_Darwin_arm64.tar.gz"
+      sha256 "947f5b333aa5442e102845f7047931fafc6ce85f619db34a8499bf16f99b1d4a"
 
       def install
         bin.install "gismo"
@@ -37,8 +37,8 @@ class Gismo < Formula
 
   on_linux do
     if Hardware::CPU.intel? and Hardware::CPU.is_64_bit?
-      url "https://github.com/jrossi/gismo/releases/download/v0.4.0/gismo_0.4.0_Linux_x86_64.tar.gz"
-      sha256 "93d19bf328cbbfcbf142dfb0d1e12a34bfb05f07b07d6ae4d0883d1e33003927"
+      url "https://github.com/jrossi/gismo/releases/download/v0.4.2/gismo_0.4.2_Linux_x86_64.tar.gz"
+      sha256 "d82d4f8990ca9258273ab3c58c01e45deba6f42d4dede9f4ac26b6388c785130"
       def install
         bin.install "gismo"
         bin.install "gismo-init"
@@ -48,8 +48,8 @@ class Gismo < Formula
       end
     end
     if Hardware::CPU.arm? and Hardware::CPU.is_64_bit?
-      url "https://github.com/jrossi/gismo/releases/download/v0.4.0/gismo_0.4.0_Linux_arm64.tar.gz"
-      sha256 "fc73cef7c880ac942cc3a04ead315af8ca9a6305719312a4e9d7d2d24de0f1ea"
+      url "https://github.com/jrossi/gismo/releases/download/v0.4.2/gismo_0.4.2_Linux_arm64.tar.gz"
+      sha256 "febee12a274cb6e7c8715e5dadf3e42f69be6fb2340f64049e50a27880f753cc"
       def install
         bin.install "gismo"
         bin.install "gismo-init"
