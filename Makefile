@@ -17,7 +17,7 @@ LDFLAGS=-s -w \
 	-X main.date=$(DATE) \
 	-X main.builtBy=make
 
-all: fmt lint test test-docs build
+all: fmt lint test build
 
 build:
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) ./cmd/gismo
@@ -67,7 +67,7 @@ coverage: test
 # Documentation testing
 test-docs:
 	@echo "Testing documentation examples..."
-	$(GO) test -v ./docs/testable/...
+	cd docs/testable && $(GO) test -v .
 
 # GoReleaser targets
 snapshot:

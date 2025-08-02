@@ -13,31 +13,29 @@ func TestDocumentationValidation(t *testing.T) {
 	// in the current documentation. The fact that this test detects problems
 	// proves the framework is working as intended.
 
-	t.Run("DetectInvalidImports", func(t *testing.T) {
+	t.Run("ValidateCorrectImports", func(t *testing.T) {
 		// Load examples from library documentation
 		err := dt.LoadExamplesFromMarkdown("../content/docs/library/_index.md")
 		if err != nil {
 			t.Fatalf("Failed to load examples: %v", err)
 		}
 
-		// Test that imports are validated (this should find issues)
+		// Test that imports are now correct (should pass)
 		err = dt.ValidateAPIImports()
 		if err != nil {
-			t.Logf("✅ EXPECTED: Found invalid imports in documentation: %v", err)
-			// This is expected - our docs have invalid imports that need fixing
+			t.Errorf("❌ UNEXPECTED: Found invalid imports in updated documentation: %v", err)
 		} else {
-			t.Error("❌ UNEXPECTED: No import issues found - documentation may already be fixed")
+			t.Log("✅ SUCCESS: All imports in documentation are now valid")
 		}
 	})
 
-	t.Run("DetectInvalidAPIFunctions", func(t *testing.T) {
-		// Test that API functions are validated (this should find issues)
+	t.Run("ValidateCorrectAPIFunctions", func(t *testing.T) {
+		// Test that API functions are now correct (should pass)
 		err := dt.ValidateAPIFunctions()
 		if err != nil {
-			t.Logf("✅ EXPECTED: Found invalid API functions in documentation: %v", err)
-			// This is expected - our docs have deprecated function calls
+			t.Errorf("❌ UNEXPECTED: Found invalid API functions in updated documentation: %v", err)
 		} else {
-			t.Error("❌ UNEXPECTED: No API function issues found - documentation may already be fixed")
+			t.Log("✅ SUCCESS: All API functions in documentation are now correct")
 		}
 	})
 
