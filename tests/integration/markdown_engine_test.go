@@ -14,12 +14,12 @@ func TestLintingRuleEngine_MarkdownIntegration(t *testing.T) {
 	lintEngine := engine.NewLintingRuleEngine()
 
 	// Load test fixtures
-	goodContent, err := os.ReadFile(filepath.Join("..", "testdata", "markdown", "good.md"))
+	goodContent, err := os.ReadFile(filepath.Join("..", "fixtures", "markdown", "good.md"))
 	if err != nil {
 		t.Fatalf("Failed to read good.md fixture: %v", err)
 	}
 
-	badTrailingContent, err := os.ReadFile(filepath.Join("..", "testdata", "markdown", "bad_trailing.md"))
+	badTrailingContent, err := os.ReadFile(filepath.Join("..", "fixtures", "markdown", "bad_trailing.md"))
 	if err != nil {
 		t.Fatalf("Failed to read bad_trailing.md fixture: %v", err)
 	}

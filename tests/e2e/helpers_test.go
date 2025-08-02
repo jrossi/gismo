@@ -22,7 +22,7 @@ func buildTestBinary(t *testing.T) string {
 
 	// Build the binary
 	cmd := exec.Command("go", "build", "-o", binPath, "./cmd/gismo")
-	cmd.Dir = ".." // Go up one directory since we're in e2e_test
+	cmd.Dir = "../.." // Go up two directories since we're in tests/e2e
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
