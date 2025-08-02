@@ -1,6 +1,6 @@
 package engine
 
-import "encoding/json"
+import json "github.com/goccy/go-json"
 
 // HookMessage is the interface implemented by all hook message types
 type HookMessage interface {

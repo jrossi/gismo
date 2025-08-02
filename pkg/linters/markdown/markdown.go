@@ -3,13 +3,13 @@ package markdown
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	json "github.com/goccy/go-json"
 	"github.com/jrossi/gismo/pkg/linters"
 
 	"github.com/kaptinlin/jsonschema"

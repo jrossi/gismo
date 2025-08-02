@@ -1,6 +1,6 @@
 package engine
 
-import "encoding/json"
+import json "github.com/goccy/go-json"
 
 // testConvertToRawMessage converts a map[string]interface{} to map[string]json.RawMessage for testing
 func testConvertToRawMessage(input map[string]interface{}) map[string]json.RawMessage {

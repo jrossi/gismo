@@ -2,7 +2,6 @@ package toolcache
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 // UniversalToolCache represents the complete tool cache for a project

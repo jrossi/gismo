@@ -2,11 +2,12 @@ package engine
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
 	"sync"
+
+	json "github.com/goccy/go-json"
 )
 
 // ActionHandler defines the interface for handling specific hook events

@@ -1,9 +1,10 @@
 package engine
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 func TestAppConfig_Merge(t *testing.T) {

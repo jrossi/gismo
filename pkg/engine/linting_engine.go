@@ -2,12 +2,12 @@ package engine
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	json "github.com/goccy/go-json"
 	linters2 "github.com/jrossi/gismo/pkg/linters"
 	"github.com/jrossi/gismo/pkg/linters/golang"
 	"github.com/jrossi/gismo/pkg/linters/javascript"

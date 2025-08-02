@@ -1,9 +1,10 @@
 package engine
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 // AppConfig represents the complete configuration for gismo

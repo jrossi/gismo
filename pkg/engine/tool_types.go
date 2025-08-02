@@ -1,6 +1,6 @@
 package engine
 
-import "encoding/json"
+import json "github.com/goccy/go-json"
 
 // ToolInput represents the base interface for all tool inputs
 type ToolInput interface {

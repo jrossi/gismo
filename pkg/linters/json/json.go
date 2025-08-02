@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	json "github.com/goccy/go-json"
 	"github.com/jrossi/gismo/pkg/linters"
 
 	gojson "github.com/goccy/go-json"
