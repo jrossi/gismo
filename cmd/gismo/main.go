@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 // Build variables injected via ldflags
@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// Load configuration
-	configLoader, err := gismo.NewConfigLoader()
+	configLoader, err := engine.NewConfigLoader()
 	if err != nil {
 		if *debug {
 			fmt.Fprintf(os.Stderr, "Failed to create config loader: %v\n", err)
@@ -72,7 +72,7 @@ func main() {
 		configLoader = nil
 	}
 
-	var appConfig *gismo.AppConfig
+	var appConfig *engine.AppConfig
 	if configLoader != nil {
 		if *configFile != "" {
 			// Load specific config file
@@ -92,7 +92,7 @@ func main() {
 	}
 
 	// Create linting config from app config
-	lintingConfig := gismo.LintingConfig{}
+	lintingConfig := engine.LintingConfig{}
 	if appConfig != nil {
 		if appConfig.Parallel != nil {
 			if appConfig.Parallel.MaxWorkers != nil {
@@ -109,7 +109,7 @@ func main() {
 	}
 
 	// Create rule engine with linting capabilities
-	ruleEngine := gismo.NewLintingRuleEngineWithConfig(lintingConfig)
+	ruleEngine := engine.NewLintingRuleEngineWithConfig(lintingConfig)
 
 	// Set the app config if available
 	if appConfig != nil {
@@ -285,7 +285,7 @@ func main() {
 
 	// Default behavior: process hook from stdin
 	// Create executor
-	executor := gismo.NewExecutor(ruleEngine)
+	executor := engine.NewExecutor(ruleEngine)
 	executor.SetTimeout(*timeout)
 
 	// Create context

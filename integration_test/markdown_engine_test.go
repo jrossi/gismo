@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 func TestLintingRuleEngine_MarkdownIntegration(t *testing.T) {
-	engine := gismo.NewLintingRuleEngine()
+	lintEngine := engine.NewLintingRuleEngine()
 
 	// Load test fixtures
 	goodContent, err := os.ReadFile(filepath.Join("..", "testdata", "markdown", "good.md"))
@@ -76,9 +76,9 @@ func TestLintingRuleEngine_MarkdownIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg := &gismo.PreToolUseMessage{
-				BaseHookMessage: gismo.BaseHookMessage{
-					HookEventName: gismo.PreToolUseEvent,
+			msg := &engine.PreToolUseMessage{
+				BaseHookMessage: engine.BaseHookMessage{
+					HookEventName: engine.PreToolUseEvent,
 				},
 				ToolName: tt.toolName,
 				ToolInput: testConvertToRawMessage(map[string]interface{}{
@@ -88,7 +88,7 @@ func TestLintingRuleEngine_MarkdownIntegration(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			resp, err := engine.EvaluatePreToolUse(ctx, msg)
+			resp, err := lintEngine.EvaluatePreToolUse(ctx, msg)
 			if err != nil {
 				t.Fatalf("EvaluatePreToolUse() error = %v", err)
 			}
@@ -107,7 +107,7 @@ func TestLintingRuleEngine_MarkdownIntegration(t *testing.T) {
 }
 
 func TestLintingRuleEngine_MarkdownErrorHandling(t *testing.T) {
-	engine := gismo.NewLintingRuleEngine()
+	lintEngine := engine.NewLintingRuleEngine()
 
 	tests := []struct {
 		name    string
@@ -148,16 +148,16 @@ func TestLintingRuleEngine_MarkdownErrorHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg := &gismo.PreToolUseMessage{
-				BaseHookMessage: gismo.BaseHookMessage{
-					HookEventName: gismo.PreToolUseEvent,
+			msg := &engine.PreToolUseMessage{
+				BaseHookMessage: engine.BaseHookMessage{
+					HookEventName: engine.PreToolUseEvent,
 				},
 				ToolName:  "Write",
 				ToolInput: testConvertToRawMessage(tt.input),
 			}
 
 			ctx := context.Background()
-			resp, err := engine.EvaluatePreToolUse(ctx, msg)
+			resp, err := lintEngine.EvaluatePreToolUse(ctx, msg)
 
 			if tt.wantErr && err == nil {
 				t.Error("Expected error, got none")
@@ -175,7 +175,7 @@ func TestLintingRuleEngine_MarkdownErrorHandling(t *testing.T) {
 }
 
 func TestLintingRuleEngine_MarkdownOutputFormatting(t *testing.T) {
-	engine := gismo.NewLintingRuleEngine()
+	lintEngine := engine.NewLintingRuleEngine()
 
 	badMarkdown := `# Bad Document
 
@@ -192,9 +192,9 @@ no language
 
 Very long line that exceeds our 120 character limit and should trigger a line length warning from our linter implementation.`
 
-	msg := &gismo.PreToolUseMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
-			HookEventName: gismo.PreToolUseEvent,
+	msg := &engine.PreToolUseMessage{
+		BaseHookMessage: engine.BaseHookMessage{
+			HookEventName: engine.PreToolUseEvent,
 		},
 		ToolName: "Write",
 		ToolInput: testConvertToRawMessage(map[string]interface{}{
@@ -204,7 +204,7 @@ Very long line that exceeds our 120 character limit and should trigger a line le
 	}
 
 	ctx := context.Background()
-	resp, err := engine.EvaluatePreToolUse(ctx, msg)
+	resp, err := lintEngine.EvaluatePreToolUse(ctx, msg)
 	if err != nil {
 		t.Fatalf("EvaluatePreToolUse() error = %v", err)
 	}
@@ -226,7 +226,7 @@ Very long line that exceeds our 120 character limit and should trigger a line le
 }
 
 func TestLintingRuleEngine_MarkdownSuccessCase(t *testing.T) {
-	engine := gismo.NewLintingRuleEngine()
+	lintEngine := engine.NewLintingRuleEngine()
 
 	goodMarkdown := `# Good Document
 
@@ -244,9 +244,9 @@ fmt.Println("Hello")
 
 Content here is properly formatted.`
 
-	msg := &gismo.PreToolUseMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
-			HookEventName: gismo.PreToolUseEvent,
+	msg := &engine.PreToolUseMessage{
+		BaseHookMessage: engine.BaseHookMessage{
+			HookEventName: engine.PreToolUseEvent,
 		},
 		ToolName: "Write",
 		ToolInput: testConvertToRawMessage(map[string]interface{}{
@@ -256,7 +256,7 @@ Content here is properly formatted.`
 	}
 
 	ctx := context.Background()
-	resp, err := engine.EvaluatePreToolUse(ctx, msg)
+	resp, err := lintEngine.EvaluatePreToolUse(ctx, msg)
 	if err != nil {
 		t.Fatalf("EvaluatePreToolUse() error = %v", err)
 	}
@@ -268,7 +268,7 @@ Content here is properly formatted.`
 }
 
 func TestLintingRuleEngine_MarkdownPerformance(t *testing.T) {
-	engine := gismo.NewLintingRuleEngine()
+	lintEngine := engine.NewLintingRuleEngine()
 
 	// Create large markdown content
 	largeContent := "# Performance Test\n\n"
@@ -276,9 +276,9 @@ func TestLintingRuleEngine_MarkdownPerformance(t *testing.T) {
 		largeContent += "## Section " + string(rune(i)) + "\n\nContent here.\n\n"
 	}
 
-	msg := &gismo.PreToolUseMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
-			HookEventName: gismo.PreToolUseEvent,
+	msg := &engine.PreToolUseMessage{
+		BaseHookMessage: engine.BaseHookMessage{
+			HookEventName: engine.PreToolUseEvent,
 		},
 		ToolName: "Write",
 		ToolInput: testConvertToRawMessage(map[string]interface{}{
@@ -288,7 +288,7 @@ func TestLintingRuleEngine_MarkdownPerformance(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	resp, err := engine.EvaluatePreToolUse(ctx, msg)
+	resp, err := lintEngine.EvaluatePreToolUse(ctx, msg)
 	if err != nil {
 		t.Fatalf("Large document linting failed: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestLintingRuleEngine_MarkdownPerformance(t *testing.T) {
 }
 
 func TestLintingRuleEngine_MarkdownConcurrency(t *testing.T) {
-	engine := gismo.NewLintingRuleEngine()
+	lintEngine := engine.NewLintingRuleEngine()
 
 	content := `# Concurrent Test
 
@@ -320,9 +320,9 @@ This is a test document for concurrent processing.
 
 	for i := 0; i < numRequests; i++ {
 		go func(id int) {
-			msg := &gismo.PreToolUseMessage{
-				BaseHookMessage: gismo.BaseHookMessage{
-					HookEventName: gismo.PreToolUseEvent,
+			msg := &engine.PreToolUseMessage{
+				BaseHookMessage: engine.BaseHookMessage{
+					HookEventName: engine.PreToolUseEvent,
 				},
 				ToolName: "Write",
 				ToolInput: testConvertToRawMessage(map[string]interface{}{
@@ -332,7 +332,7 @@ This is a test document for concurrent processing.
 			}
 
 			ctx := context.Background()
-			_, err := engine.EvaluatePreToolUse(ctx, msg)
+			_, err := lintEngine.EvaluatePreToolUse(ctx, msg)
 			results <- err
 		}(i)
 	}
@@ -346,7 +346,7 @@ This is a test document for concurrent processing.
 }
 
 func TestLintingRuleEngine_MarkdownMixedWithGo(t *testing.T) {
-	engine := gismo.NewLintingRuleEngine()
+	lintEngine := engine.NewLintingRuleEngine()
 
 	tests := []struct {
 		name     string
@@ -387,9 +387,9 @@ func TestLintingRuleEngine_MarkdownMixedWithGo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg := &gismo.PreToolUseMessage{
-				BaseHookMessage: gismo.BaseHookMessage{
-					HookEventName: gismo.PreToolUseEvent,
+			msg := &engine.PreToolUseMessage{
+				BaseHookMessage: engine.BaseHookMessage{
+					HookEventName: engine.PreToolUseEvent,
 				},
 				ToolName: "Write",
 				ToolInput: testConvertToRawMessage(map[string]interface{}{
@@ -399,7 +399,7 @@ func TestLintingRuleEngine_MarkdownMixedWithGo(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			resp, err := engine.EvaluatePreToolUse(ctx, msg)
+			resp, err := lintEngine.EvaluatePreToolUse(ctx, msg)
 			if err != nil {
 				t.Fatalf("EvaluatePreToolUse() error = %v", err)
 			}

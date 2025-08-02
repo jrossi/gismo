@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 // getCcfeedbackPath finds the gismo binary for testing
@@ -185,9 +185,9 @@ func TestDefaultBehavior_ValidInput(t *testing.T) {
 	gismoPath := getCcfeedbackPath(t)
 
 	// Create valid hook message
-	input := gismo.PostToolUseMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
-			HookEventName: gismo.PostToolUseEvent,
+	input := engine.PostToolUseMessage{
+		BaseHookMessage: engine.BaseHookMessage{
+			HookEventName: engine.PostToolUseEvent,
 			SessionID:     "test-session",
 		},
 		ToolName:   "Write",

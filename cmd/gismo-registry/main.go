@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 // Build variables injected via ldflags
@@ -74,13 +74,13 @@ func main() {
 	}
 
 	// Load configuration
-	configLoader, err := gismo.NewConfigLoader()
+	configLoader, err := engine.NewConfigLoader()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create config loader: %v\n", err)
 		os.Exit(1)
 	}
 
-	var appConfig *gismo.AppConfig
+	var appConfig *engine.AppConfig
 	if *configFile != "" {
 		// Load specific config file
 		appConfig, err = configLoader.LoadConfigWithPaths([]string{*configFile})
@@ -169,18 +169,18 @@ func determineScope(globalFlag, projectFlag bool) Scope {
 
 // RegistryManager handles registry operations
 type RegistryManager struct {
-	appConfig    *gismo.AppConfig
-	configLoader *gismo.ConfigLoader
-	gitOps       *gismo.GitOperations
+	appConfig    *engine.AppConfig
+	configLoader *engine.ConfigLoader
+	gitOps       *engine.GitOperations
 	debug        bool
 }
 
 // NewRegistryManager creates a new registry manager
-func NewRegistryManager(appConfig *gismo.AppConfig, configLoader *gismo.ConfigLoader, debug bool) *RegistryManager {
+func NewRegistryManager(appConfig *engine.AppConfig, configLoader *engine.ConfigLoader, debug bool) *RegistryManager {
 	return &RegistryManager{
 		appConfig:    appConfig,
 		configLoader: configLoader,
-		gitOps:       gismo.NewGitOperations(),
+		gitOps:       engine.NewGitOperations(),
 		debug:        debug,
 	}
 }
@@ -197,10 +197,10 @@ func (rm *RegistryManager) AddRegistry(ctx context.Context, gitURL string, scope
 	}
 
 	// Normalize URL
-	normalizedURL := gismo.NormalizeGitURL(gitURL)
+	normalizedURL := engine.NormalizeGitURL(gitURL)
 
 	// Extract repository name from URL
-	name := gismo.ExtractRepoName(normalizedURL)
+	name := engine.ExtractRepoName(normalizedURL)
 	if name == "" {
 		return fmt.Errorf("failed to extract repository name from URL: %s", gitURL)
 	}
@@ -254,7 +254,7 @@ func (rm *RegistryManager) AddRegistry(ctx context.Context, gitURL string, scope
 	fmt.Printf("   Components: %d\n", componentCount)
 
 	// Create registry entry
-	entry := &gismo.RegistryEntry{
+	entry := &engine.RegistryEntry{
 		URL:         normalizedURL,
 		GitSHA:      repoInfo.CommitSHA,
 		Version:     manifest.Version,
@@ -418,7 +418,7 @@ func (rm *RegistryManager) createTempRegistryDir(name string) (string, error) {
 }
 
 // validateRepositoryManifest validates that a repository contains a valid manifest
-func (rm *RegistryManager) validateRepositoryManifest(repoPath string) (*gismo.ManifestData, error) {
+func (rm *RegistryManager) validateRepositoryManifest(repoPath string) (*engine.ManifestData, error) {
 	// Check if manifest.json exists
 	manifestPath := filepath.Join(repoPath, "manifest.json")
 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
@@ -426,7 +426,7 @@ func (rm *RegistryManager) validateRepositoryManifest(repoPath string) (*gismo.M
 	}
 
 	// Create manifest parser
-	parser, err := gismo.NewManifestParser()
+	parser, err := engine.NewManifestParser()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manifest parser: %w", err)
 	}

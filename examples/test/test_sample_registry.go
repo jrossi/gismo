@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 	fmt.Printf("🧪 Testing sample registry: %s\n", manifestPath)
 
 	// Create manifest parser
-	parser, err := gismo.NewManifestParser()
+	parser, err := engine.NewManifestParser()
 	if err != nil {
 		fmt.Printf("❌ Failed to create manifest parser: %v\n", err)
 		os.Exit(1)
@@ -44,7 +44,7 @@ func main() {
 
 	// Test package validation
 	fmt.Printf("\n🔍 Testing package validation...\n")
-	validator := gismo.NewPackageValidator(true)
+	validator := engine.NewPackageValidator(true)
 
 	ctx := context.Background()
 	validationResult, err := validator.ValidatePackage(ctx, "../sample-registry", manifest)

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	}
 
 	// Load configuration
-	configLoader, err := gismo.NewConfigLoader()
+	configLoader, err := engine.NewConfigLoader()
 	if err != nil {
 		if *debug {
 			fmt.Fprintf(os.Stderr, "Failed to create config loader: %v\n", err)
@@ -42,7 +42,7 @@ func main() {
 		configLoader = nil
 	}
 
-	var appConfig *gismo.AppConfig
+	var appConfig *engine.AppConfig
 	if configLoader != nil {
 		if *configFile != "" {
 			// Load specific config file
@@ -62,7 +62,7 @@ func main() {
 	}
 
 	// Create linting config from app config
-	lintingConfig := gismo.LintingConfig{}
+	lintingConfig := engine.LintingConfig{}
 	if appConfig != nil {
 		if appConfig.Parallel != nil {
 			if appConfig.Parallel.MaxWorkers != nil {
@@ -75,7 +75,7 @@ func main() {
 	}
 
 	// Create rule engine with linting capabilities
-	ruleEngine := gismo.NewLintingRuleEngineWithConfig(lintingConfig)
+	ruleEngine := engine.NewLintingRuleEngineWithConfig(lintingConfig)
 
 	// Set the app config if available
 	if appConfig != nil {
@@ -130,7 +130,7 @@ type ConfigPath struct {
 }
 
 // getConfigPaths returns the configuration paths that would be loaded
-func getConfigPaths(customConfigFile string, configLoader *gismo.ConfigLoader) []ConfigPath {
+func getConfigPaths(customConfigFile string, configLoader *engine.ConfigLoader) []ConfigPath {
 	var paths []ConfigPath
 
 	if customConfigFile != "" {
@@ -157,7 +157,7 @@ func getConfigPaths(customConfigFile string, configLoader *gismo.ConfigLoader) [
 }
 
 // showConfigSources displays which configuration files were loaded
-func showConfigSources(customConfigFile string, configLoader *gismo.ConfigLoader) {
+func showConfigSources(customConfigFile string, configLoader *engine.ConfigLoader) {
 	fmt.Printf("=== Configuration Sources ===\n")
 
 	if customConfigFile != "" {
@@ -194,7 +194,7 @@ func showConfigSources(customConfigFile string, configLoader *gismo.ConfigLoader
 }
 
 // showFilter shows which rules and linters apply to a specific file
-func showFilter(filePath string, ruleEngine *gismo.LintingRuleEngine, configLoader *gismo.ConfigLoader, customConfigFile string, debug bool) error {
+func showFilter(filePath string, ruleEngine *engine.LintingRuleEngine, configLoader *engine.ConfigLoader, customConfigFile string, debug bool) error {
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return fmt.Errorf("file does not exist: %s", filePath)
@@ -376,7 +376,7 @@ func showFilter(filePath string, ruleEngine *gismo.LintingRuleEngine, configLoad
 }
 
 // showExecutionTree displays a visual tree of how Claude Code hooks execute
-func showExecutionTree(filePath string, applicableLinters []string, appConfig *gismo.AppConfig, ruleEngine *gismo.LintingRuleEngine, customConfigFile string) {
+func showExecutionTree(filePath string, applicableLinters []string, appConfig *engine.AppConfig, ruleEngine *engine.LintingRuleEngine, customConfigFile string) {
 	ext := filepath.Ext(filePath)
 
 	// ANSI color codes

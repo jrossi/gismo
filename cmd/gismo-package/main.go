@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 // Build variables injected via ldflags
@@ -75,13 +75,13 @@ func main() {
 	}
 
 	// Load configuration
-	configLoader, err := gismo.NewConfigLoader()
+	configLoader, err := engine.NewConfigLoader()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create config loader: %v\n", err)
 		os.Exit(1)
 	}
 
-	var appConfig *gismo.AppConfig
+	var appConfig *engine.AppConfig
 	if *configFile != "" {
 		// Load specific config file
 		appConfig, err = configLoader.LoadConfigWithPaths([]string{*configFile})
@@ -176,22 +176,22 @@ func determineScope(globalFlag, projectFlag bool) Scope {
 
 // PackageManager handles package operations
 type PackageManager struct {
-	appConfig    *gismo.AppConfig
-	configLoader *gismo.ConfigLoader
-	gitOps       *gismo.GitOperations
+	appConfig    *engine.AppConfig
+	configLoader *engine.ConfigLoader
+	gitOps       *engine.GitOperations
 	installer    *ComponentInstaller
-	depResolver  *gismo.DependencyResolver
+	depResolver  *engine.DependencyResolver
 	debug        bool
 }
 
 // NewPackageManager creates a new package manager
-func NewPackageManager(appConfig *gismo.AppConfig, configLoader *gismo.ConfigLoader, debug bool) *PackageManager {
+func NewPackageManager(appConfig *engine.AppConfig, configLoader *engine.ConfigLoader, debug bool) *PackageManager {
 	return &PackageManager{
 		appConfig:    appConfig,
 		configLoader: configLoader,
-		gitOps:       gismo.NewGitOperations(),
+		gitOps:       engine.NewGitOperations(),
 		installer:    NewComponentInstaller(debug),
-		depResolver:  gismo.NewDependencyResolver(appConfig, debug),
+		depResolver:  engine.NewDependencyResolver(appConfig, debug),
 		debug:        debug,
 	}
 }
@@ -268,7 +268,7 @@ func (pm *PackageManager) InstallPackage(ctx context.Context, packageName string
 }
 
 // installSinglePackage installs a single package from a dependency entry
-func (pm *PackageManager) installSinglePackage(ctx context.Context, dep *gismo.DependencyEntry, scope Scope) error {
+func (pm *PackageManager) installSinglePackage(ctx context.Context, dep *engine.DependencyEntry, scope Scope) error {
 	packageName := dep.Spec.Name
 
 	if pm.debug {
@@ -305,7 +305,7 @@ func (pm *PackageManager) installSinglePackage(ctx context.Context, dep *gismo.D
 	}
 
 	// Create package entry
-	packageEntry := &gismo.PackageEntry{
+	packageEntry := &engine.PackageEntry{
 		RegistryName: dep.RegistryURL,
 		GitSHA:       dep.CommitSHA,
 		Installed:    installResults,
@@ -522,11 +522,11 @@ type SearchResult struct {
 	RegistryName string
 	RegistryURL  string
 	CommitSHA    string
-	Manifest     *gismo.ManifestData
+	Manifest     *engine.ManifestData
 }
 
 // searchInRegistry searches for packages in a specific registry
-func (pm *PackageManager) searchInRegistry(ctx context.Context, registryEntry *gismo.RegistryEntry, pattern string) ([]*SearchResult, error) {
+func (pm *PackageManager) searchInRegistry(ctx context.Context, registryEntry *engine.RegistryEntry, pattern string) ([]*SearchResult, error) {
 	// Create temporary directory for search
 	tempDir, err := pm.createTempPackageDir("search-" + extractRegistryName(registryEntry.URL))
 	if err != nil {
@@ -546,7 +546,7 @@ func (pm *PackageManager) searchInRegistry(ctx context.Context, registryEntry *g
 		return nil, fmt.Errorf("no manifest.json found in registry")
 	}
 
-	parser, err := gismo.NewManifestParser()
+	parser, err := engine.NewManifestParser()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manifest parser: %w", err)
 	}
@@ -574,7 +574,7 @@ func (pm *PackageManager) searchInRegistry(ctx context.Context, registryEntry *g
 }
 
 // matchesPattern checks if a manifest matches the search pattern
-func (pm *PackageManager) matchesPattern(manifest *gismo.ManifestData, pattern string) bool {
+func (pm *PackageManager) matchesPattern(manifest *engine.ManifestData, pattern string) bool {
 	pattern = strings.ToLower(pattern)
 
 	// Check name
@@ -695,11 +695,11 @@ func NewComponentInstaller(debug bool) *ComponentInstaller {
 }
 
 // InstallComponents installs components from a manifest
-func (ci *ComponentInstaller) InstallComponents(ctx context.Context, repoPath string, manifest *gismo.ManifestData, claudeDir string, gitURL string) (map[string]string, error) {
+func (ci *ComponentInstaller) InstallComponents(ctx context.Context, repoPath string, manifest *engine.ManifestData, claudeDir string, gitURL string) (map[string]string, error) {
 	installed := make(map[string]string)
 
 	// Parse components and install them
-	parser, err := gismo.NewManifestParser()
+	parser, err := engine.NewManifestParser()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manifest parser: %w", err)
 	}
@@ -707,7 +707,7 @@ func (ci *ComponentInstaller) InstallComponents(ctx context.Context, repoPath st
 	components := parser.ListAllComponents(manifest)
 
 	// Extract namespace from git URL
-	namespace := gismo.ExtractNamespacePath(gitURL)
+	namespace := engine.ExtractNamespacePath(gitURL)
 
 	for _, componentInfo := range components {
 		componentName := fmt.Sprintf("%s.%s", componentInfo.Group, componentInfo.Name)
@@ -747,7 +747,7 @@ func (ci *ComponentInstaller) RemoveComponents(installed map[string]string) erro
 }
 
 // installSingleComponent installs a single component file
-func (ci *ComponentInstaller) installSingleComponent(srcPath, dstPath string, component *gismo.Component) error {
+func (ci *ComponentInstaller) installSingleComponent(srcPath, dstPath string, component *engine.Component) error {
 	// Ensure destination directory exists
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 
 	fmt.Println("Testing ExtractNamespacePath function:")
 	for _, url := range testURLs {
-		namespace := gismo.ExtractNamespacePath(url)
+		namespace := engine.ExtractNamespacePath(url)
 		fmt.Printf("Input:  %s\n", url)
 		fmt.Printf("Output: %s\n", namespace)
 		fmt.Println()

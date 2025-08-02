@@ -6,8 +6,8 @@ import (
 	"log"
 
 	json "github.com/goccy/go-json"
-	"github.com/jrossi/gismo"
-	"github.com/jrossi/gismo/handlers"
+	"github.com/jrossi/gismo/pkg/engine"
+	"github.com/jrossi/gismo/pkg/handlers"
 )
 
 // This demo shows how the new action handler architecture works
@@ -18,37 +18,37 @@ func main() {
 	fmt.Println("===================================")
 
 	// Create the new action handler engine
-	engine := gismo.NewActionHandlerEngine()
+	actionEngine := engine.NewActionHandlerEngine()
 
 	// Register handlers with priorities (higher priority = runs first)
 	fmt.Println("\n📝 Registering action handlers...")
 
 	// 1. File Access Handler (highest priority for security)
 	fileHandler := handlers.NewFileAccessHandler()
-	engine.RegisterHandler(gismo.PreToolUseEvent, fileHandler)
+	actionEngine.RegisterHandler(engine.PreToolUseEvent, fileHandler)
 	fmt.Println("✅ File Access Handler registered (priority 300)")
 
 	// 2. Secret Detection Handler (high priority)
 	secretHandler := handlers.NewSecretDetectionHandler()
-	engine.RegisterHandler(gismo.UserPromptSubmitEvent, secretHandler)
-	engine.RegisterHandler(gismo.PreToolUseEvent, secretHandler)
+	actionEngine.RegisterHandler(engine.UserPromptSubmitEvent, secretHandler)
+	actionEngine.RegisterHandler(engine.PreToolUseEvent, secretHandler)
 	fmt.Println("✅ Secret Detection Handler registered (priority 200)")
 
 	// 3. Regex Handler (medium priority)
 	regexHandler := handlers.NewRegexHandler()
-	engine.RegisterHandler(gismo.UserPromptSubmitEvent, regexHandler)
-	engine.RegisterHandler(gismo.PreToolUseEvent, regexHandler)
+	actionEngine.RegisterHandler(engine.UserPromptSubmitEvent, regexHandler)
+	actionEngine.RegisterHandler(engine.PreToolUseEvent, regexHandler)
 	fmt.Println("✅ Regex Handler registered (priority 150)")
 
 	// 4. Linting Handler (lower priority)
 	lintingHandler := handlers.NewLintingHandler()
-	engine.RegisterHandler(gismo.PreToolUseEvent, lintingHandler)
-	engine.RegisterHandler(gismo.PostToolUseEvent, lintingHandler)
+	actionEngine.RegisterHandler(engine.PreToolUseEvent, lintingHandler)
+	actionEngine.RegisterHandler(engine.PostToolUseEvent, lintingHandler)
 	fmt.Println("✅ Linting Handler registered (priority 100)")
 
 	// 5. Notification Handler (lowest priority)
 	notificationHandler := handlers.NewNotificationHandler()
-	engine.RegisterHandler(gismo.NotificationEvent, notificationHandler)
+	actionEngine.RegisterHandler(engine.NotificationEvent, notificationHandler)
 	fmt.Println("✅ Notification Handler registered (priority 50)")
 
 	// Demonstrate the 5 use cases
@@ -56,23 +56,23 @@ func main() {
 
 	// Use Case 1: Secret detection in user prompt
 	fmt.Println("\n1️⃣  Use Case 1: Secret detection in UserPromptSubmit")
-	testSecretDetection(engine)
+	testSecretDetection(actionEngine)
 
 	// Use Case 2: Regex matching in prompt (non-blocking)
 	fmt.Println("\n2️⃣  Use Case 2: Regex matching in UserPromptSubmit")
-	testRegexMatching(engine)
+	testRegexMatching(actionEngine)
 
 	// Use Case 3: PreToolUse Read(*) blocks PEM cert files
 	fmt.Println("\n3️⃣  Use Case 3: PreToolUse Read(*) blocks PEM cert files")
-	testFileReadRestriction(engine)
+	testFileReadRestriction(actionEngine)
 
 	// Use Case 4: PreToolUse Write(*) blocks predefined paths
 	fmt.Println("\n4️⃣  Use Case 4: PreToolUse Write(*) blocks system paths")
-	testFileWriteRestriction(engine)
+	testFileWriteRestriction(actionEngine)
 
 	// Use Case 5: Notification handling
 	fmt.Println("\n5️⃣  Use Case 5: Notification handling")
-	testNotificationHandling(engine)
+	testNotificationHandling(actionEngine)
 
 	fmt.Println("\n🎉 Demo completed successfully!")
 	fmt.Println("The new action handler architecture provides:")
@@ -83,20 +83,20 @@ func main() {
 	fmt.Println("  📊 Support for all Claude Code hook types")
 }
 
-func testSecretDetection(engine gismo.RuleEngine) {
+func testSecretDetection(ruleEngine engine.RuleEngine) {
 	ctx := context.Background()
 
 	// Create a UserPromptSubmit message with a potential secret
-	msg := &gismo.UserPromptSubmitMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
+	msg := &engine.UserPromptSubmitMessage{
+		BaseHookMessage: engine.BaseHookMessage{
 			SessionID:     "demo-session",
-			HookEventName: gismo.UserPromptSubmitEvent,
+			HookEventName: engine.UserPromptSubmitEvent,
 		},
 		UserPrompt: "Please help me with api_key=sk-1234567890abcdef1234567890abcdef",
 		Timestamp:  1234567890,
 	}
 
-	response, err := engine.EvaluateUserPromptSubmit(ctx, msg)
+	response, err := ruleEngine.EvaluateUserPromptSubmit(ctx, msg)
 	if err != nil {
 		log.Printf("❌ Error: %v", err)
 		return
@@ -109,20 +109,20 @@ func testSecretDetection(engine gismo.RuleEngine) {
 	}
 }
 
-func testRegexMatching(engine gismo.RuleEngine) {
+func testRegexMatching(ruleEngine engine.RuleEngine) {
 	ctx := context.Background()
 
 	// Create a UserPromptSubmit message with regex patterns
-	msg := &gismo.UserPromptSubmitMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
+	msg := &engine.UserPromptSubmitMessage{
+		BaseHookMessage: engine.BaseHookMessage{
 			SessionID:     "demo-session",
-			HookEventName: gismo.UserPromptSubmitEvent,
+			HookEventName: engine.UserPromptSubmitEvent,
 		},
 		UserPrompt: "This is a demo test example for the system",
 		Timestamp:  1234567890,
 	}
 
-	response, err := engine.EvaluateUserPromptSubmit(ctx, msg)
+	response, err := ruleEngine.EvaluateUserPromptSubmit(ctx, msg)
 	if err != nil {
 		log.Printf("❌ Error: %v", err)
 		return
@@ -131,7 +131,7 @@ func testRegexMatching(engine gismo.RuleEngine) {
 	fmt.Printf("✅ Regex matching completed (non-blocking): %+v\n", response)
 }
 
-func testFileReadRestriction(engine gismo.RuleEngine) {
+func testFileReadRestriction(ruleEngine engine.RuleEngine) {
 	ctx := context.Background()
 
 	// Create a PreToolUse message for reading a PEM file
@@ -139,16 +139,16 @@ func testFileReadRestriction(engine gismo.RuleEngine) {
 		"file_path": json.RawMessage(`"/etc/ssl/private/server.pem"`),
 	}
 
-	msg := &gismo.PreToolUseMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
+	msg := &engine.PreToolUseMessage{
+		BaseHookMessage: engine.BaseHookMessage{
 			SessionID:     "demo-session",
-			HookEventName: gismo.PreToolUseEvent,
+			HookEventName: engine.PreToolUseEvent,
 		},
 		ToolName:  "Read",
 		ToolInput: toolInput,
 	}
 
-	response, err := engine.EvaluatePreToolUse(ctx, msg)
+	response, err := ruleEngine.EvaluatePreToolUse(ctx, msg)
 	if err != nil {
 		log.Printf("❌ Error: %v", err)
 		return
@@ -161,7 +161,7 @@ func testFileReadRestriction(engine gismo.RuleEngine) {
 	}
 }
 
-func testFileWriteRestriction(engine gismo.RuleEngine) {
+func testFileWriteRestriction(ruleEngine engine.RuleEngine) {
 	ctx := context.Background()
 
 	// Create a PreToolUse message for writing to /etc/
@@ -170,16 +170,16 @@ func testFileWriteRestriction(engine gismo.RuleEngine) {
 		"content":   json.RawMessage(`"malicious content"`),
 	}
 
-	msg := &gismo.PreToolUseMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
+	msg := &engine.PreToolUseMessage{
+		BaseHookMessage: engine.BaseHookMessage{
 			SessionID:     "demo-session",
-			HookEventName: gismo.PreToolUseEvent,
+			HookEventName: engine.PreToolUseEvent,
 		},
 		ToolName:  "Write",
 		ToolInput: toolInput,
 	}
 
-	response, err := engine.EvaluatePreToolUse(ctx, msg)
+	response, err := ruleEngine.EvaluatePreToolUse(ctx, msg)
 	if err != nil {
 		log.Printf("❌ Error: %v", err)
 		return
@@ -192,20 +192,20 @@ func testFileWriteRestriction(engine gismo.RuleEngine) {
 	}
 }
 
-func testNotificationHandling(engine gismo.RuleEngine) {
+func testNotificationHandling(ruleEngine engine.RuleEngine) {
 	ctx := context.Background()
 
 	// Create a Notification message
-	msg := &gismo.NotificationMessage{
-		BaseHookMessage: gismo.BaseHookMessage{
+	msg := &engine.NotificationMessage{
+		BaseHookMessage: engine.BaseHookMessage{
 			SessionID:     "demo-session",
-			HookEventName: gismo.NotificationEvent,
+			HookEventName: engine.NotificationEvent,
 		},
 		NotificationType: "tool_permission",
 		Message:          "User requested permission to execute high-risk operation",
 	}
 
-	response, err := engine.EvaluateNotification(ctx, msg)
+	response, err := ruleEngine.EvaluateNotification(ctx, msg)
 	if err != nil {
 		log.Printf("❌ Error: %v", err)
 		return

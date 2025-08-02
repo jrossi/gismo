@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jrossi/gismo"
+	"github.com/jrossi/gismo/pkg/engine"
 )
 
 func main() {
 	fmt.Println("🧪 Testing minimal manifest validation...")
 
 	// Create validator
-	validator, err := gismo.NewManifestValidator()
+	validator, err := engine.NewManifestValidator()
 	if err != nil {
 		fmt.Printf("❌ Failed to create validator: %v\n", err)
 		os.Exit(1)
