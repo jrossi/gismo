@@ -2,8 +2,6 @@ module github.com/jrossi/gismo
 
 go 1.23.8
 
-toolchain go1.24.5
-
 require (
 	github.com/goccy/go-json v0.10.5
 	github.com/kaptinlin/jsonschema v0.4.6
