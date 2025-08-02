@@ -1,8 +1,9 @@
 package protobuf
 
 import (
-	"encoding/json"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 // ProtobufConfig represents protobuf linter specific configuration

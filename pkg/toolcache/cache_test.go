@@ -1,12 +1,13 @@
 package toolcache
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 func TestGetCacheManager(t *testing.T) {

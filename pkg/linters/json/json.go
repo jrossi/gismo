@@ -10,10 +10,9 @@ import (
 	"strings"
 	"sync"
 
-	json "github.com/goccy/go-json"
 	"github.com/jrossi/gismo/pkg/linters"
 
-	gojson "github.com/goccy/go-json"
+	json "github.com/goccy/go-json"
 	"github.com/kaptinlin/jsonschema"
 )
 
@@ -71,7 +70,7 @@ func (l *JSONLinter) CanHandle(filePath string) bool {
 // SetConfig updates the linter configuration
 func (l *JSONLinter) SetConfig(config []byte) error {
 	var jsonConfig JSONConfig
-	if err := gojson.Unmarshal(config, &jsonConfig); err != nil {
+	if err := json.Unmarshal(config, &jsonConfig); err != nil {
 		return fmt.Errorf("failed to unmarshal json config: %w", err)
 	}
 	l.config = &jsonConfig
@@ -228,11 +227,11 @@ func (l *JSONLinter) validateJSON(ctx context.Context, filePath string, content 
 	}
 
 	// Fast syntax validation
-	valid := gojson.Valid(content)
+	valid := json.Valid(content)
 	if !valid {
 		// Find the exact error location
 		var data interface{}
-		if err := gojson.Unmarshal(content, &data); err != nil {
+		if err := json.Unmarshal(content, &data); err != nil {
 			pos := l.findErrorPosition(content, err)
 			result.Success = false
 			result.Issues = append(result.Issues, linters.Issue{
@@ -272,9 +271,9 @@ func (l *JSONLinter) validateJSONLines(ctx context.Context, filePath string, con
 		}
 
 		// Validate each line as JSON
-		if !gojson.Valid([]byte(line)) {
+		if !json.Valid([]byte(line)) {
 			var data interface{}
-			if err := gojson.Unmarshal([]byte(line), &data); err != nil {
+			if err := json.Unmarshal([]byte(line), &data); err != nil {
 				result.Success = false
 				result.Issues = append(result.Issues, linters.Issue{
 					File:     filePath,
@@ -298,7 +297,7 @@ func (l *JSONLinter) validateJSONLines(ctx context.Context, filePath string, con
 // validateJSONStructure performs deeper structural validation
 func (l *JSONLinter) validateJSONStructure(content []byte, filePath string, result *linters.LintResult) error {
 	var data interface{}
-	if err := gojson.Unmarshal(content, &data); err != nil {
+	if err := json.Unmarshal(content, &data); err != nil {
 		pos := l.findErrorPosition(content, err)
 		result.Success = false
 		result.Issues = append(result.Issues, linters.Issue{
@@ -396,10 +395,10 @@ func (l *JSONLinter) formatJSON(content []byte, format JSONFormat) ([]byte, erro
 	switch format {
 	case FormatJSON:
 		var data interface{}
-		if err := gojson.Unmarshal(content, &data); err != nil {
+		if err := json.Unmarshal(content, &data); err != nil {
 			return nil, err
 		}
-		return gojson.MarshalIndent(data, "", "  ")
+		return json.MarshalIndent(data, "", "  ")
 
 	case FormatJSONLines:
 		var result bytes.Buffer
@@ -412,11 +411,11 @@ func (l *JSONLinter) formatJSON(content []byte, format JSONFormat) ([]byte, erro
 			}
 
 			var data interface{}
-			if err := gojson.Unmarshal([]byte(line), &data); err != nil {
+			if err := json.Unmarshal([]byte(line), &data); err != nil {
 				continue // Skip invalid lines
 			}
 
-			formatted, err := gojson.MarshalIndent(data, "", "  ")
+			formatted, err := json.MarshalIndent(data, "", "  ")
 			if err != nil {
 				continue
 			}

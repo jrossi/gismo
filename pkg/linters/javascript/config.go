@@ -1,9 +1,10 @@
 package javascript
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 // JavaScriptConfig holds configuration for the JavaScript/TypeScript linter

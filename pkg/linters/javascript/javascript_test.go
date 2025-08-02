@@ -2,9 +2,10 @@ package javascript
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 func TestJavaScriptLinter_CanHandle(t *testing.T) {

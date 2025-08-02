@@ -1,8 +1,9 @@
 package rust
 
 import (
-	"encoding/json"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 // RustConfig represents rust linter specific configuration

@@ -2,11 +2,11 @@ package engine
 
 import (
 	"embed"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
+	json "github.com/goccy/go-json"
 	"github.com/kaptinlin/jsonschema"
 )
 

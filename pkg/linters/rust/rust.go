@@ -3,7 +3,6 @@ package rust
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,6 +12,8 @@ import (
 	"time"
 
 	"github.com/jrossi/gismo/pkg/linters"
+
+	json "github.com/goccy/go-json"
 )
 
 // RustLinter handles Rust file linting, formatting, and test running with cargo tools

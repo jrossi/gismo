@@ -3,7 +3,6 @@ package python
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +10,8 @@ import (
 	"sync"
 
 	"github.com/jrossi/gismo/pkg/linters"
+
+	json "github.com/goccy/go-json"
 )
 
 // PythonLinter handles linting of Python files using UV/UVX

@@ -2,10 +2,11 @@ package markdown
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"strings"
 	"testing"
+
+	json "github.com/goccy/go-json"
 )
 
 func TestMarkdownLinter_CanHandle(t *testing.T) {

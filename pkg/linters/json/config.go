@@ -1,9 +1,10 @@
 package json
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 // JSONFormat represents the JSON format type

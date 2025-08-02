@@ -2,11 +2,12 @@ package json
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"testing"
 
 	linters2 "github.com/jrossi/gismo/pkg/linters"
+
+	json "github.com/goccy/go-json"
 )
 
 func TestNewJSONLinter(t *testing.T) {

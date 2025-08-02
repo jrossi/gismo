@@ -2,9 +2,10 @@ package engine
 
 import (
 	"bytes"
-	"encoding/json"
 	"strings"
 	"testing"
+
+	json "github.com/goccy/go-json"
 )
 
 func TestParseHookMessage(t *testing.T) {

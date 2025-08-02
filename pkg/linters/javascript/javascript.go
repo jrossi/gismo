@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -12,6 +11,8 @@ import (
 	"time"
 
 	"github.com/jrossi/gismo/pkg/toolcache"
+
+	json "github.com/goccy/go-json"
 
 	"github.com/jrossi/gismo/pkg/linters"
 )

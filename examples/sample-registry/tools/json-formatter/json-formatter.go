@@ -1,11 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	json "github.com/goccy/go-json"
 )
 
 // JSONFormatter provides JSON formatting and validation utilities
@@ -69,7 +70,7 @@ func (jf *JSONFormatter) FormatFile(inputPath, outputPath string) error {
 		return err
 	}
 
-	return os.WriteFile(outputPath, formatted, 0644)
+	return os.WriteFile(outputPath, formatted, 0600)
 }
 
 func printUsage() {
@@ -166,14 +167,16 @@ func main() {
 		err = formatter.FormatFile(inputFile, outputFile)
 	} else {
 		// Format from stdin
-		formatted, err := formatter.Format(input)
-		if err == nil {
-			if outputFile == "" {
-				_, err = os.Stdout.Write(formatted)
+		formatted, formatErr := formatter.Format(input)
+		if formatErr != nil {
+			err = formatErr
+		} else if outputFile == "" {
+			_, err = os.Stdout.Write(formatted)
+			if err == nil {
 				fmt.Println() // Add newline
-			} else {
-				err = os.WriteFile(outputFile, formatted, 0644)
 			}
+		} else {
+			err = os.WriteFile(outputFile, formatted, 0600)
 		}
 	}
 

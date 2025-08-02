@@ -1,9 +1,10 @@
 package python
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
+
+	json "github.com/goccy/go-json"
 )
 
 // PythonConfig holds configuration for the Python linter
