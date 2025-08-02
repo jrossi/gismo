@@ -29,21 +29,28 @@ import (
     "fmt"
     "log"
 
-    "github.com/jrossi/gismo"
+    json "github.com/goccy/go-json"
+    "github.com/jrossi/gismo/pkg/engine"
 )
 
 func main() {
     // Create API with default configuration
-    api := gismo.NewAPI()
+    api := engine.New()
 
-    // Process a hook message
-    message := `{
-        "type": "PreToolUse",
-        "tool": "bash",
-        "command": "go build"
-    }`
+    // Create a hook message
+    msg := &engine.PreToolUseMessage{
+        BaseHookMessage: engine.BaseHookMessage{
+            SessionID:     "demo-session",
+            HookEventName: engine.PreToolUseEvent,
+        },
+        ToolName: "Write",
+        ToolInput: map[string]json.RawMessage{
+            "file_path": json.RawMessage(`"main.go"`),
+            "content":   json.RawMessage(`"package main\n"`),
+        },
+    }
 
-    result, err := api.ProcessHookMessage(context.Background(), message)
+    result, err := api.ProcessMessage(context.Background(), msg)
     if err != nil {
         log.Fatal(err)
     }
@@ -52,7 +59,7 @@ func main() {
 }
 ```
 
-### With Custom Configuration
+### With Custom Rule Engine
 
 ```go
 package main
@@ -61,26 +68,30 @@ import (
     "context"
     "log"
 
-    "github.com/jrossi/gismo"
+    json "github.com/goccy/go-json"
+    "github.com/jrossi/gismo/pkg/engine"
 )
 
 func main() {
-    // Load configuration from file
-    config, err := gismo.LoadConfig(".claude/gismo.json")
-    if err != nil {
-        log.Fatal(err)
-    }
+    // Create custom rule engine
+    ruleEngine := engine.NewLintingRuleEngine()
 
-    // Create API with custom configuration
-    api := gismo.NewAPIWithConfig(config)
+    // Create API with custom rule engine
+    api := engine.NewWithRuleEngine(ruleEngine)
 
     // Process hook message
-    result, err := api.ProcessHookMessage(context.Background(), `{
-        "type": "PreToolUse",
-        "tool": "edit",
-        "file": "main.go"
-    }`)
+    msg := &engine.PreToolUseMessage{
+        BaseHookMessage: engine.BaseHookMessage{
+            SessionID:     "demo-session",
+            HookEventName: engine.PreToolUseEvent,
+        },
+        ToolName: "Edit",
+        ToolInput: map[string]json.RawMessage{
+            "file_path": json.RawMessage(`"main.go"`),
+        },
+    }
 
+    result, err := api.ProcessMessage(context.Background(), msg)
     if err != nil {
         log.Fatal(err)
     }
@@ -95,42 +106,40 @@ func main() {
 
 ```go
 // Create with default configuration
-api := gismo.NewAPI()
-
-// Create with custom configuration
-config := &gismo.Config{
-    Linters: map[string]gismo.LinterConfig{
-        "golang": {
-            Enabled: true,
-            Config: map[string]interface{}{
-                "fastMode": true,
-            },
-        },
-    },
-}
-api := gismo.NewAPIWithConfig(config)
+api := engine.New()
 
 // Create with custom rule engine
-engine := &MyCustomEngine{}
-api := gismo.NewAPIWithEngine(engine)
+ruleEngine := engine.NewLintingRuleEngine()
+api := engine.NewWithRuleEngine(ruleEngine)
+
+// Create with configuration
+config := engine.NewAppConfig()
+api := engine.NewWithConfig(config)
+
+// Use builder pattern
+api := engine.NewBuilder().
+    WithRuleEngine(ruleEngine).
+    Build()
 ```
 
 ### Hook Processing
 
 ```go
-// Process hook message from string
-result, err := api.ProcessHookMessage(ctx, messageJSON)
+// Process hook message
+result, err := api.ProcessMessage(ctx, message)
 
-// Process hook message from struct
-msg := &gismo.HookMessage{
-    Type: "PreToolUse",
-    Tool: "bash",
-    Command: "go test",
+// Process from stdin
+result, err := api.ProcessStdin(ctx)
+
+// Parse hook messages
+message, err := api.ParseHookMessage(messageJSON)
+
+// Create hook response
+response := &engine.HookResponse{
+    Decision: "allow",
+    Reason:   "No issues found",
 }
-result, err := api.ProcessHook(ctx, msg)
-
-// Process file directly
-result, err := api.ProcessFile(ctx, "src/main.go")
+responseJSON, err := api.MarshalHookResponse(response)
 ```
 
 ## Configuration API
@@ -138,38 +147,37 @@ result, err := api.ProcessFile(ctx, "src/main.go")
 ### Loading Configuration
 
 ```go
-// Load from file
-config, err := gismo.LoadConfig("config.json")
+// Create new configuration
+config := engine.NewAppConfig()
+
+// Load configuration from config loader
+loader := engine.NewConfigLoader()
+config, err := loader.LoadConfig("gismo.json")
 
 // Load with search paths
-config, err := gismo.LoadConfigWithPaths([]string{
+config, err := loader.LoadConfigWithPaths([]string{
     ".claude/gismo.json",
     "~/.claude/gismo.json",
 })
-
-// Default configuration
-config := gismo.DefaultConfig()
 ```
 
 ### Configuration Structure
 
 ```go
-type Config struct {
-    Linters  map[string]LinterConfig `json:"linters"`
-    Rules    []Rule                  `json:"rules"`
-    Parallel ParallelConfig          `json:"parallel"`
-    Timeout  string                  `json:"timeout"`
+type AppConfig struct {
+    Linters  map[string]json.RawMessage `json:"linters"`
+    Parallel ParallelConfig             `json:"parallel"`
+    Registry RegistryConfig             `json:"registry"`
+}
+
+type ParallelConfig struct {
+    MaxWorkers      int  `json:"max_workers"`
+    DisableParallel bool `json:"disable_parallel"`
 }
 
 type LinterConfig struct {
-    Enabled bool                   `json:"enabled"`
-    Config  map[string]interface{} `json:"config"`
-}
-
-type Rule struct {
-    Pattern string                 `json:"pattern"`
-    Linter  string                 `json:"linter"`
-    Rules   map[string]interface{} `json:"rules"`
+    Enabled *bool          `json:"enabled,omitempty"`
+    Config  map[string]any `json:"config,omitempty"`
 }
 ```
 
@@ -178,28 +186,19 @@ type Rule struct {
 ### Built-in Engines
 
 ```go
-// Golang linting engine
-engine := &gismo.GolangEngine{
-    Config: gismo.GolangConfig{
-        FastMode: true,
-        TestTimeout: "5m",
-    },
-}
+// Base rule engine (allows everything)
+engine := engine.NewBaseRuleEngine()
 
-// Markdown linting engine
-engine := &gismo.MarkdownEngine{
-    Config: gismo.MarkdownConfig{
-        MaxLineLength: 120,
-        RequireFrontmatter: false,
-    },
-}
+// Linting rule engine
+lintingEngine := engine.NewLintingRuleEngine()
+
+// Action handler engine
+actionEngine := engine.NewActionHandlerEngine()
 
 // Composite engine (multiple engines)
-composite := gismo.NewCompositeRuleEngine(
-    &gismo.GolangEngine{},
-    &gismo.MarkdownEngine{},
-    &gismo.JSONEngine{},
-)
+composite := engine.NewCompositeRuleEngine()
+composite.AddEngine(lintingEngine)
+composite.AddEngine(actionEngine)
 ```
 
 ### Custom Rule Engine
@@ -209,21 +208,18 @@ type MyRuleEngine struct {
     config MyConfig
 }
 
-func (e *MyRuleEngine) ShouldProcess(ctx context.Context, msg *gismo.HookMessage) (bool, error) {
-    // Determine if this engine should process the message
-    return msg.Tool == "myTool", nil
-}
-
-func (e *MyRuleEngine) ProcessMessage(ctx context.Context, msg *gismo.HookMessage) (*gismo.Result, error) {
+func (e *MyRuleEngine) EvaluatePreToolUse(ctx context.Context, msg *engine.PreToolUseMessage) (*engine.HookResponse, error) {
     // Custom processing logic
-    return &gismo.Result{
-        Success: true,
-        Message: "Custom processing completed",
+    return &engine.HookResponse{
+        Decision: "allow",
+        Reason:   "Custom processing completed",
     }, nil
 }
 
+// Implement other evaluation methods...
+
 // Use custom engine
-api := gismo.NewAPIWithEngine(&MyRuleEngine{})
+api := engine.NewWithRuleEngine(&MyRuleEngine{})
 ```
 
 ## Message Types
@@ -231,13 +227,22 @@ api := gismo.NewAPIWithEngine(&MyRuleEngine{})
 ### Hook Message Structure
 
 ```go
-type HookMessage struct {
-    Type      string                 `json:"type"`
-    Tool      string                 `json:"tool"`
-    Command   string                 `json:"command,omitempty"`
-    File      string                 `json:"file,omitempty"`
-    Content   string                 `json:"content,omitempty"`
-    Arguments map[string]interface{} `json:"arguments,omitempty"`
+type BaseHookMessage struct {
+    SessionID     string         `json:"session_id"`
+    HookEventName HookEventName  `json:"hook_event_name"`
+}
+
+type PreToolUseMessage struct {
+    BaseHookMessage
+    ToolName  string                     `json:"tool_name"`
+    ToolInput map[string]json.RawMessage `json:"tool_input"`
+}
+
+type PostToolUseMessage struct {
+    BaseHookMessage
+    ToolName   string                     `json:"tool_name"`
+    ToolInput  map[string]json.RawMessage `json:"tool_input"`
+    ToolOutput json.RawMessage            `json:"tool_output"`
 }
 ```
 
@@ -245,51 +250,85 @@ type HookMessage struct {
 
 ```go
 const (
-    PreToolUse     = "PreToolUse"
-    PostToolUse    = "PostToolUse"
-    Notification   = "Notification"
-    Stop           = "Stop"
-    SubagentStop   = "SubagentStop"
-    PreCompact     = "PreCompact"
+    PreToolUseEvent      HookEventName = "PreToolUse"
+    PostToolUseEvent     HookEventName = "PostToolUse"
+    NotificationEvent    HookEventName = "Notification"
+    StopEvent           HookEventName = "Stop"
+    SubagentStopEvent   HookEventName = "SubagentStop"
+    PreCompactEvent     HookEventName = "PreCompact"
+    UserPromptSubmitEvent HookEventName = "UserPromptSubmit"
+    SessionStartEvent   HookEventName = "SessionStart"
 )
 ```
 
-### Result Structure
+### Response Structure
 
 ```go
-type Result struct {
-    Success   bool                   `json:"success"`
-    Message   string                 `json:"message"`
-    Issues    []Issue                `json:"issues,omitempty"`
-    Metadata  map[string]interface{} `json:"metadata,omitempty"`
-    Duration  time.Duration          `json:"duration"`
+type HookResponse struct {
+    Decision string                 `json:"decision"`
+    Reason   string                 `json:"reason,omitempty"`
+    Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
-type Issue struct {
-    File     string `json:"file"`
-    Line     int    `json:"line,omitempty"`
-    Column   int    `json:"column,omitempty"`
-    Message  string `json:"message"`
-    Severity string `json:"severity"`
-    Rule     string `json:"rule,omitempty"`
+const (
+    ExitSuccess  ExitCode = 0
+    ExitBlocking ExitCode = 2
+)
+```
+
+## Action Handlers
+
+### Built-in Handlers
+
+```go
+// File access restriction handler
+fileHandler := handlers.NewFileAccessHandler()
+
+// Secret detection handler
+secretHandler := handlers.NewSecretDetectionHandler()
+
+// Regex pattern matching handler
+regexHandler := handlers.NewRegexHandler()
+
+// Linting integration handler
+lintingHandler := handlers.NewLintingHandler()
+
+// Notification handler
+notificationHandler := handlers.NewNotificationHandler()
+```
+
+### Registering Handlers
+
+```go
+// Create action handler engine
+actionEngine := engine.NewActionHandlerEngine()
+
+// Register handlers with different hook types
+actionEngine.RegisterHandler(engine.PreToolUseEvent, fileHandler)
+actionEngine.RegisterHandler(engine.UserPromptSubmitEvent, secretHandler)
+actionEngine.RegisterHandler(engine.NotificationEvent, notificationHandler)
+```
+
+### Custom Action Handler
+
+```go
+type MyHandler struct {
+    engine.BaseActionHandler
 }
+
+func (h *MyHandler) HandlePreToolUse(ctx context.Context, msg *engine.PreToolUseMessage) (*engine.HookResponse, error) {
+    // Custom logic here
+    return &engine.HookResponse{
+        Decision: "allow",
+        Reason:   "Custom handler approved",
+    }, nil
+}
+
+// Register custom handler
+actionEngine.RegisterHandler(engine.PreToolUseEvent, &MyHandler{})
 ```
 
 ## Advanced Usage
-
-### Parallel Processing
-
-```go
-// Configure parallel execution
-config := &gismo.Config{
-    Parallel: gismo.ParallelConfig{
-        MaxWorkers: 8,
-        DisableParallel: false,
-    },
-}
-
-api := gismo.NewAPIWithConfig(config)
-```
 
 ### Context and Cancellation
 
@@ -298,7 +337,7 @@ api := gismo.NewAPIWithConfig(config)
 ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 defer cancel()
 
-result, err := api.ProcessHookMessage(ctx, message)
+result, err := api.ProcessMessage(ctx, message)
 
 // Process with cancellation
 ctx, cancel := context.WithCancel(context.Background())
@@ -307,63 +346,28 @@ go func() {
     cancel() // Cancel after 10 seconds
 }()
 
-result, err := api.ProcessHookMessage(ctx, message)
+result, err := api.ProcessMessage(ctx, message)
 ```
 
 ### Error Handling
 
 ```go
-result, err := api.ProcessHookMessage(ctx, message)
+result, err := api.ProcessMessage(ctx, message)
 if err != nil {
     switch {
-    case errors.Is(err, gismo.ErrConfigNotFound):
-        log.Println("Configuration file not found")
-    case errors.Is(err, gismo.ErrInvalidMessage):
-        log.Println("Invalid hook message format")
-    case errors.Is(err, gismo.ErrTimeout):
+    case errors.Is(err, context.DeadlineExceeded):
         log.Println("Processing timed out")
+    case errors.Is(err, context.Canceled):
+        log.Println("Processing was canceled")
     default:
         log.Printf("Unexpected error: %v", err)
     }
 }
 
-// Check result for issues
-if !result.Success {
-    for _, issue := range result.Issues {
-        fmt.Printf("%s:%d: %s (%s)\n",
-            issue.File, issue.Line, issue.Message, issue.Severity)
-    }
+// Check response for blocking
+if result != nil && result.ExitCode == engine.ExitBlocking {
+    log.Printf("Operation blocked: %s", result.Reason)
 }
-```
-
-## Performance Considerations
-
-### Memory Usage
-
-```go
-// For large files, consider streaming
-config := &gismo.Config{
-    Linters: map[string]gismo.LinterConfig{
-        "json": {
-            Config: map[string]interface{}{
-                "streamingMode": true,
-                "maxFileSize": "100MB",
-            },
-        },
-    },
-}
-```
-
-### Caching
-
-```go
-// Enable rule engine caching
-api := gismo.NewAPI()
-api.EnableCaching(true)
-
-// Custom cache implementation
-cache := &MyCustomCache{}
-api.SetCache(cache)
 ```
 
 ## Integration Examples
@@ -378,20 +382,27 @@ import (
     "net/http"
     "log"
 
-    "github.com/jrossi/gismo"
+    "github.com/jrossi/gismo/pkg/engine"
 )
 
 func main() {
-    api := gismo.NewAPI()
+    api := engine.New()
 
     http.HandleFunc("/hook", func(w http.ResponseWriter, r *http.Request) {
-        var msg gismo.HookMessage
-        if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
+        decoder := json.NewDecoder(r.Body)
+        var rawMsg json.RawMessage
+        if err := decoder.Decode(&rawMsg); err != nil {
             http.Error(w, err.Error(), http.StatusBadRequest)
             return
         }
 
-        result, err := api.ProcessHook(r.Context(), &msg)
+        msg, err := api.ParseHookMessage(rawMsg)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        result, err := api.ProcessMessage(r.Context(), msg)
         if err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
@@ -413,55 +424,40 @@ package main
 
 import (
     "context"
-    "encoding/json"
     "flag"
     "fmt"
     "os"
 
-    "github.com/jrossi/gismo"
+    "github.com/jrossi/gismo/pkg/engine"
 )
 
 func main() {
     var (
         configFile = flag.String("config", "", "Configuration file")
-        file       = flag.String("file", "", "File to process")
     )
     flag.Parse()
 
-    var api *gismo.API
+    var api *engine.API
     if *configFile != "" {
-        config, err := gismo.LoadConfig(*configFile)
+        loader := engine.NewConfigLoader()
+        config, err := loader.LoadConfig(*configFile)
         if err != nil {
             fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
             os.Exit(1)
         }
-        api = gismo.NewAPIWithConfig(config)
+        api = engine.NewWithConfig(config)
     } else {
-        api = gismo.NewAPI()
+        api = engine.New()
     }
 
-    var result *gismo.Result
-    var err error
-
-    if *file != "" {
-        result, err = api.ProcessFile(context.Background(), *file)
-    } else {
-        // Read from stdin
-        var msg gismo.HookMessage
-        if err := json.NewDecoder(os.Stdin).Decode(&msg); err != nil {
-            fmt.Fprintf(os.Stderr, "Error reading message: %v\n", err)
-            os.Exit(1)
-        }
-        result, err = api.ProcessHook(context.Background(), &msg)
-    }
-
+    result, err := api.ProcessStdin(context.Background())
     if err != nil {
         fmt.Fprintf(os.Stderr, "Error: %v\n", err)
         os.Exit(1)
     }
 
-    if !result.Success {
-        os.Exit(1)
+    if result.ExitCode == engine.ExitBlocking {
+        os.Exit(int(result.ExitCode))
     }
 }
 ```
@@ -477,25 +473,31 @@ import (
     "context"
     "testing"
 
-    "github.com/jrossi/gismo"
+    json "github.com/goccy/go-json"
+    "github.com/jrossi/gismo/pkg/engine"
 )
 
 func TestAPIProcessing(t *testing.T) {
-    api := gismo.NewAPI()
+    api := engine.New()
 
-    msg := &gismo.HookMessage{
-        Type: "PreToolUse",
-        Tool: "bash",
-        Command: "echo test",
+    msg := &engine.PreToolUseMessage{
+        BaseHookMessage: engine.BaseHookMessage{
+            SessionID:     "test-session",
+            HookEventName: engine.PreToolUseEvent,
+        },
+        ToolName: "Write",
+        ToolInput: map[string]json.RawMessage{
+            "file_path": json.RawMessage(`"test.go"`),
+        },
     }
 
-    result, err := api.ProcessHook(context.Background(), msg)
+    result, err := api.ProcessMessage(context.Background(), msg)
     if err != nil {
         t.Fatalf("Unexpected error: %v", err)
     }
 
-    if !result.Success {
-        t.Errorf("Expected success, got failure: %s", result.Message)
+    if result.ExitCode == engine.ExitBlocking {
+        t.Errorf("Expected success, got blocking: %s", result.Reason)
     }
 }
 ```
@@ -504,16 +506,21 @@ func TestAPIProcessing(t *testing.T) {
 
 ```go
 func BenchmarkAPIProcessing(b *testing.B) {
-    api := gismo.NewAPI()
-    msg := &gismo.HookMessage{
-        Type: "PreToolUse",
-        Tool: "bash",
-        Command: "echo test",
+    api := engine.New()
+    msg := &engine.PreToolUseMessage{
+        BaseHookMessage: engine.BaseHookMessage{
+            SessionID:     "bench-session",
+            HookEventName: engine.PreToolUseEvent,
+        },
+        ToolName: "Read",
+        ToolInput: map[string]json.RawMessage{
+            "file_path": json.RawMessage(`"test.go"`),
+        },
     }
 
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
-        _, err := api.ProcessHook(context.Background(), msg)
+        _, err := api.ProcessMessage(context.Background(), msg)
         if err != nil {
             b.Fatal(err)
         }
@@ -525,4 +532,5 @@ func BenchmarkAPIProcessing(b *testing.B) {
 
 - [Configuration Guide](/docs/configuration/) - Configuration options
 - [CLI Reference](/docs/cli/) - Command-line interface
+- [Action Handlers](/docs/action-handlers/) - Security and validation handlers
 - [Linter Documentation](/docs/linters/) - Language-specific linting

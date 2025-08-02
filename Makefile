@@ -1,4 +1,4 @@
-.PHONY: all test build clean fmt lint install bench snapshot release
+.PHONY: all test build clean fmt lint install bench snapshot release test-docs
 
 # Build information
 BINARY_NAME=gismo
@@ -17,7 +17,7 @@ LDFLAGS=-s -w \
 	-X main.date=$(DATE) \
 	-X main.builtBy=make
 
-all: fmt lint test build
+all: fmt lint test test-docs build
 
 build:
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) ./cmd/gismo
@@ -63,6 +63,11 @@ deps:
 
 coverage: test
 	$(GO) tool cover -html=coverage.out -o coverage.html
+
+# Documentation testing
+test-docs:
+	@echo "Testing documentation examples..."
+	$(GO) test -v ./docs/testable/...
 
 # GoReleaser targets
 snapshot:
