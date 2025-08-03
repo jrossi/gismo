@@ -6,21 +6,45 @@ type: "cover"
 
 {{< blocks/cover title="Gismo" image_anchor="top" height="full" color="primary" >}}
 <div class="mx-auto">
-	<a class="btn btn-lg btn-primary mr-3 mb-4" href="{{< relref "/docs" >}}">
-		Get Started <i class="fas fa-arrow-alt-circle-right ml-2"></i>
-	</a>
-	<a class="btn btn-lg btn-secondary mr-3 mb-4" href="https://github.com/jrossi/gismo">
-		View on GitHub <i class="fab fa-github ml-2"></i>
-	</a>
-	<p class="lead mt-5">Optimize Claude Code performance through real-time feedback loops</p>
+	<h2 class="display-4 mb-4">Stop Claude Code from going off course</h2>
+	<p class="lead mb-5">Real-time feedback loops that catch errors <strong>before</strong> they become problems.<br>
+		Get valid code from the first attempt.</p>
+
+	<div class="mb-5">
+		<a class="btn btn-lg btn-light mr-3 mb-3" href="{{< relref "/docs/quickstart" >}}">
+			<i class="fas fa-rocket mr-2"></i>Quick Start Guide
+		</a>
+		<a class="btn btn-lg btn-outline-light mr-3 mb-3" href="{{< relref "/docs" >}}">
+			<i class="fas fa-book mr-2"></i>Documentation
+		</a>
+		<a class="btn btn-lg btn-outline-light mb-3" href="https://github.com/jrossi/gismo">
+			<i class="fab fa-github mr-2"></i>View on GitHub
+		</a>
+	</div>
+
+	<div class="row text-center mt-5">
+		<div class="col-md-4">
+			<h5><i class="fas fa-times-circle text-danger mr-2"></i>Without Gismo</h5>
+			<p class="small">Write → Test → Debug → Repeat</p>
+		</div>
+		<div class="col-md-4">
+			<h5><i class="fas fa-arrow-right text-light mr-2"></i></h5>
+			<p class="small">Software-defined feedback</p>
+		</div>
+		<div class="col-md-4">
+			<h5><i class="fas fa-check-circle text-success mr-2"></i>With Gismo</h5>
+			<p class="small">Write → Validate → Done</p>
+		</div>
+	</div>
 </div>
 {{< /blocks/cover >}}
 
 {{% blocks/lead color="primary" %}}
-Gismo creates **software-defined feedback loops** that prevent Claude Code from going off course.
+**Stop wasting time on Claude Code debugging cycles.**
 
-By providing instant validation, linting, and security enforcement as files are written, Gismo eliminates failure loops
-and ensures valid output from the first attempt.
+Gismo creates intelligent feedback loops that catch syntax errors, security issues, and style violations
+**before** Claude Code writes invalid files. Transform your AI development from reactive debugging
+to proactive validation.
 {{% /blocks/lead %}}
 
 {{< blocks/section color="dark" type="row" >}}
@@ -65,27 +89,35 @@ Transform your Claude Code experience from reactive debugging to proactive devel
 </p>
 </div>
 
-<div class="col-lg-8 mx-auto">
+<div class="col-lg-10 mx-auto">
 <div class="row">
-<div class="col-sm-6 mb-4">
-<h3><i class="fas fa-times-circle text-danger"></i> Without Gismo</h3>
-<ul>
-<li>Claude Code writes invalid code</li>
-<li>Errors discovered during testing</li>
-<li>Time wasted on debugging cycles</li>
-<li>AI goes down unproductive paths</li>
-<li>Manual intervention required</li>
+<div class="col-md-6 mb-4">
+<div class="card h-100 bg-transparent border-light">
+<div class="card-body text-center">
+<h3 class="card-title"><i class="fas fa-times-circle text-danger mr-2"></i>Without Gismo</h3>
+<ul class="list-unstyled mt-3">
+<li class="mb-2"><i class="fas fa-arrow-right text-danger mr-2"></i>Claude Code writes invalid code</li>
+<li class="mb-2"><i class="fas fa-arrow-right text-danger mr-2"></i>Errors discovered during testing</li>
+<li class="mb-2"><i class="fas fa-arrow-right text-danger mr-2"></i>Time wasted on debugging cycles</li>
+<li class="mb-2"><i class="fas fa-arrow-right text-danger mr-2"></i>AI goes down unproductive paths</li>
+<li class="mb-2"><i class="fas fa-arrow-right text-danger mr-2"></i>Manual intervention required</li>
 </ul>
 </div>
-<div class="col-sm-6 mb-4">
-<h3><i class="fas fa-check-circle text-success"></i> With Gismo</h3>
-<ul>
-<li>Instant validation and feedback</li>
-<li>Valid code from first attempt</li>
-<li>Immediate course correction</li>
-<li>AI stays focused on solution</li>
-<li>Automated quality assurance</li>
+</div>
+</div>
+<div class="col-md-6 mb-4">
+<div class="card h-100 bg-transparent border-light">
+<div class="card-body text-center">
+<h3 class="card-title"><i class="fas fa-check-circle text-success mr-2"></i>With Gismo</h3>
+<ul class="list-unstyled mt-3">
+<li class="mb-2"><i class="fas fa-check text-success mr-2"></i>Instant validation and feedback</li>
+<li class="mb-2"><i class="fas fa-check text-success mr-2"></i>Valid code from first attempt</li>
+<li class="mb-2"><i class="fas fa-check text-success mr-2"></i>Immediate course correction</li>
+<li class="mb-2"><i class="fas fa-check text-success mr-2"></i>AI stays focused on solution</li>
+<li class="mb-2"><i class="fas fa-check text-success mr-2"></i>Automated quality assurance</li>
 </ul>
+</div>
+</div>
 </div>
 </div>
 </div>
