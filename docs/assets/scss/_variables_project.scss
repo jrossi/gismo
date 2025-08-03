@@ -19,9 +19,9 @@ $danger: #ef4444;
 $light: #f8fafc;
 $dark: #1e293b;
 
-// Typography
-$font-family-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-$font-family-monospace: 'JetBrains Mono', 'Fira Code', Monaco, Consolas, 'Courier New', monospace;
+// Typography - use system fonts for better compatibility
+$font-family-sans-serif: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$font-family-monospace: 'SF Mono', Monaco, Consolas, 'Courier New', monospace;
 
 $font-size-base: 1.0625rem; // 17px
 $line-height-base: 1.6;
