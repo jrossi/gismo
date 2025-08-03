@@ -6,6 +6,21 @@ theme = 'docsy'
 [params]
 github_repo = 'https://github.com/jrossi/gismo'
 github_branch = 'main'
+copyright = "Gismo Contributors"
+version_menu = "Releases"
+
+# UI customization
+ui = { sidebar_menu_compact = true, navbar_logo = true, footer_about_disable = false }
+links_section_depth = 2
+
+# Add custom CSS
+custom_css = ['css/custom.css']
+
+# Enable syntax highlighting
+prism_syntax_highlighting = true
+
+# Enable search
+offlineSearch = true
 
 [markup]
   [markup.goldmark]

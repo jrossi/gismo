@@ -1,0 +1,394 @@
+/*
+ * Gismo Documentation Custom Styles
+ * Modern, vibrant theme with enhanced visual appeal
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+// Global styles
+body {
+  font-family: $font-family-sans-serif;
+  color: $dark;
+  line-height: $line-height-base;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Animated gradient background for hero sections
+.gradient-bg {
+  background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+// Enhanced typography
+h1, h2, h3, h4, h5, h6 {
+  font-weight: $headings-font-weight;
+  color: $headings-color;
+  margin-bottom: 1rem;
+  
+  &:hover .header-link {
+    opacity: 1;
+  }
+}
+
+.display-1 { font-size: 4rem; font-weight: 800; }
+.display-2 { font-size: 3.5rem; font-weight: 700; }
+.display-3 { font-size: 3rem; font-weight: 600; }
+.display-4 { font-size: 2.5rem; font-weight: 600; }
+
+// Enhanced navigation
+.td-navbar {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  
+  &.scrolled {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  .navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    
+    svg {
+      height: 40px;
+      width: auto;
+      margin-right: 0.5rem;
+    }
+  }
+  
+  .nav-link {
+    font-weight: 500;
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: $primary !important;
+    }
+  }
+}
+
+// Hero section enhancements
+.td-cover-block {
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    z-index: 0;
+  }
+  
+  .container {
+    position: relative;
+    z-index: 1;
+  }
+  
+  h1, h2, h3, h4 {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+  }
+}
+
+// Enhanced buttons
+.btn {
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: $border-radius;
+  transition: all 0.3s ease;
+  
+  &-primary {
+    background: $gradient-primary;
+    border: none;
+    
+    &:hover {
+      background: $gradient-primary;
+      filter: brightness(1.1);
+    }
+  }
+  
+  &-secondary {
+    background: $gradient-secondary;
+    border: none;
+    color: white;
+    
+    &:hover {
+      background: $gradient-secondary;
+      filter: brightness(1.1);
+    }
+  }
+  
+  &-outline-primary {
+    color: $primary;
+    border-color: $primary;
+    
+    &:hover {
+      background: $primary;
+      border-color: $primary;
+      color: white;
+    }
+  }
+}
+
+// Feature blocks with hover effects
+.td-box {
+  border-radius: $border-radius-lg;
+  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $box-shadow-lg;
+    border-color: $primary-light;
+  }
+  
+  h4 {
+    color: $primary;
+  }
+  
+  .icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    background: $gradient-primary;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+// Enhanced code blocks
+pre {
+  border-radius: $border-radius;
+  box-shadow: $box-shadow;
+  position: relative;
+  
+  &::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0 $border-radius 0 $border-radius;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+}
+
+code {
+  font-family: $font-family-monospace;
+  font-size: 0.875rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: $border-radius-sm;
+  background: $code-bg;
+  color: $code-color;
+}
+
+// Sidebar enhancements
+.td-sidebar {
+  background: $sidebar-bg;
+  border-right: 1px solid $sidebar-border-color;
+  
+  .td-sidebar__inner {
+    padding: 2rem 1rem;
+  }
+  
+  nav {
+    .td-sidebar-nav__section-title {
+      font-weight: 700;
+      color: $dark;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    
+    a {
+      color: #64748b;
+      padding: 0.5rem 1rem;
+      border-radius: $border-radius-sm;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        color: $primary;
+        background: rgba($primary, 0.1);
+      }
+      
+      &.active {
+        color: $primary;
+        background: rgba($primary, 0.1);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+// Cards with gradient borders
+.card {
+  border: none;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+  position: relative;
+  background: white;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: $border-radius-lg;
+    padding: 2px;
+    background: $gradient-primary;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    z-index: -1;
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $box-shadow-lg;
+  }
+}
+
+// Alert enhancements
+.alert {
+  border: none;
+  border-radius: $border-radius;
+  border-left: 4px solid;
+  
+  &-primary {
+    background: rgba($primary, 0.1);
+    border-left-color: $primary;
+    color: $primary-dark;
+  }
+  
+  &-success {
+    background: rgba($success, 0.1);
+    border-left-color: $success;
+    color: darken($success, 20%);
+  }
+  
+  &-warning {
+    background: rgba($warning, 0.1);
+    border-left-color: $warning;
+    color: darken($warning, 20%);
+  }
+  
+  &-danger {
+    background: rgba($danger, 0.1);
+    border-left-color: $danger;
+    color: darken($danger, 20%);
+  }
+}
+
+// Animated elements
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// Enhanced tables
+table {
+  border-radius: $border-radius;
+  overflow: hidden;
+  box-shadow: $box-shadow;
+  
+  thead {
+    background: $gradient-primary;
+    color: white;
+    
+    th {
+      font-weight: 600;
+      padding: 1rem;
+      border: none;
+    }
+  }
+  
+  tbody {
+    tr {
+      transition: background 0.2s ease;
+      
+      &:hover {
+        background: rgba($primary, 0.05);
+      }
+    }
+    
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+  }
+}
+
+// TOC enhancements
+.td-toc {
+  a {
+    color: #64748b;
+    font-size: 0.875rem;
+    
+    &:hover {
+      color: $primary;
+    }
+    
+    &.active {
+      color: $primary;
+      font-weight: 600;
+      border-left: 2px solid $primary;
+      padding-left: 1rem;
+    }
+  }
+}
+
+// Footer
+.td-footer {
+  background: $dark;
+  color: #94a3b8;
+  
+  a {
+    color: #cbd5e1;
+    
+    &:hover {
+      color: white;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .display-1 { font-size: 3rem; }
+  .display-2 { font-size: 2.5rem; }
+  .display-3 { font-size: 2rem; }
+  .display-4 { font-size: 1.75rem; }
+  
+  .td-box {
+    margin-bottom: 1.5rem;
+  }
+}

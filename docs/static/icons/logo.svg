@@ -2,84 +2,135 @@
 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 viewBox="0 0 500 500" style="enable-background:new 0 0 500 500;" xml:space="preserve">
 <defs>
-	<style type="text/css">
-		.gear-primary { fill: #2563eb; }
-		.gear-secondary { fill: #1d4ed8; }
-		.gear-accent { fill: #3b82f6; }
-		.feedback-loop { fill: none; stroke: #10b981; stroke-width: 4; stroke-linecap: round; }
-		.feedback-arrow { fill: #10b981; }
-		.center-dot { fill: #ef4444; }
-		.glow { filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.3)); }
-	</style>
+	<linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+		<stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+		<stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+	</linearGradient>
+	<linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+		<stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+		<stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+	</linearGradient>
+	<filter id="glow">
+		<feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+		<feMerge>
+			<feMergeNode in="coloredBlur"/>
+			<feMergeNode in="SourceGraphic"/>
+		</feMerge>
+	</filter>
+	<pattern id="circuitPattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+		<rect x="0" y="0" width="40" height="40" fill="none"/>
+		<circle cx="5" cy="5" r="2" fill="#e0e7ff" opacity="0.5"/>
+		<circle cx="35" cy="35" r="2" fill="#e0e7ff" opacity="0.5"/>
+		<path d="M5,5 L20,5 L20,20" stroke="#e0e7ff" stroke-width="1" fill="none" opacity="0.3"/>
+		<path d="M35,35 L20,35 L20,20" stroke="#e0e7ff" stroke-width="1" fill="none" opacity="0.3"/>
+	</pattern>
 </defs>
 
-<!-- Main gear body -->
-<g class="glow">
-	<!-- Outer gear teeth -->
-	<path class="gear-primary" d="M250,50 L270,45 L290,55 L285,75 L305,85 L315,65 L335,75 L325,95 L345,105 L355,85 L375,95 L365,115 L385,125 L395,105 L415,115 L405,135 L425,145 L435,125 L450,140 L435,155 L450,170 L425,180 L435,200 L415,210 L405,190 L385,200 L395,220 L375,230 L365,210 L345,220 L355,240 L335,250 L325,230 L305,240 L315,260 L290,270 L285,250 L270,280 L250,275 L245,255 L225,265 L215,245 L195,255 L205,235 L185,225 L175,245 L155,235 L165,215 L145,205 L135,225 L115,215 L125,195 L105,185 L95,205 L75,195 L85,175 L65,165 L55,185 L50,170 L65,155 L50,140 L75,130 L65,110 L85,100 L95,120 L115,110 L105,90 L125,80 L135,100 L155,90 L145,70 L165,60 L175,80 L195,70 L185,50 L205,40 L215,60 L235,50 L225,30 L245,25 L250,45 Z"/>
+<!-- Background circuit pattern -->
+<rect x="0" y="0" width="500" height="500" fill="url(#circuitPattern)" opacity="0.15"/>
+
+<!-- Main hexagon container with gradient -->
+<g transform="translate(250,250)">
+	<!-- Outer hexagon with gradient -->
+	<polygon points="-120,0 -60,-104 60,-104 120,0 60,104 -60,104" 
+		fill="url(#primaryGradient)" opacity="0.15"/>
 	
-	<!-- Inner gear rim -->
-	<circle class="gear-secondary" cx="250" cy="250" r="90"/>
+	<!-- Inner hexagon -->
+	<polygon points="-100,0 -50,-87 50,-87 100,0 50,87 -50,87" 
+		fill="none" stroke="url(#primaryGradient)" stroke-width="3"/>
 	
-	<!-- Gear spokes -->
-	<g class="gear-accent">
-		<rect x="245" y="160" width="10" height="80" rx="2"/>
-		<rect x="245" y="260" width="10" height="80" rx="2"/>
-		<rect x="160" y="245" width="80" height="10" rx="2"/>
-		<rect x="260" y="245" width="80" height="10" rx="2"/>
-		<rect x="208" y="192" width="10" height="56" rx="2" transform="rotate(45 213 220)"/>
-		<rect x="282" y="192" width="10" height="56" rx="2" transform="rotate(-45 287 220)"/>
-		<rect x="208" y="252" width="10" height="56" rx="2" transform="rotate(-45 213 280)"/>
-		<rect x="282" y="252" width="10" height="56" rx="2" transform="rotate(45 287 280)"/>
+	<!-- Core gear system -->
+	<g filter="url(#glow)">
+		<!-- Central gear -->
+		<g>
+			<circle r="50" fill="url(#primaryGradient)"/>
+			<!-- Gear teeth -->
+			<g>
+				<rect x="-5" y="-55" width="10" height="15" rx="2" fill="#4f46e5"/>
+				<rect x="-5" y="40" width="10" height="15" rx="2" fill="#4f46e5"/>
+				<rect x="-55" y="-5" width="15" height="10" rx="2" fill="#4f46e5"/>
+				<rect x="40" y="-5" width="15" height="10" rx="2" fill="#4f46e5"/>
+				<rect x="-35" y="-35" width="10" height="15" rx="2" fill="#4f46e5" transform="rotate(45 -30 -30)"/>
+				<rect x="25" y="-35" width="10" height="15" rx="2" fill="#4f46e5" transform="rotate(-45 30 -30)"/>
+				<rect x="-35" y="20" width="10" height="15" rx="2" fill="#4f46e5" transform="rotate(-45 -30 30)"/>
+				<rect x="25" y="20" width="10" height="15" rx="2" fill="#4f46e5" transform="rotate(45 30 30)"/>
+			</g>
+			<!-- Inner circle -->
+			<circle r="30" fill="#1e293b"/>
+			<!-- G letter -->
+			<text x="0" y="10" font-family="Arial, sans-serif" font-size="36" font-weight="bold" 
+				fill="white" text-anchor="middle">G</text>
+		</g>
 	</g>
-</g>
-
-<!-- Feedback loop arrows -->
-<g>
-	<!-- Primary feedback loop -->
-	<path class="feedback-loop" d="M 150,150 A 70,70 0 1,1 350,150" stroke-dasharray="8,4"/>
-	<path class="feedback-loop" d="M 150,350 A 70,70 0 1,1 350,350" stroke-dasharray="8,4"/>
 	
-	<!-- Loop arrows -->
-	<polygon class="feedback-arrow" points="340,140 360,150 340,160 345,150"/>
-	<polygon class="feedback-arrow" points="160,340 140,350 160,360 155,350"/>
-	
-	<!-- Secondary feedback indicators -->
-	<circle class="feedback-arrow" cx="120" cy="200" r="4"/>
-	<circle class="feedback-arrow" cx="380" cy="200" r="4"/>
-	<circle class="feedback-arrow" cx="200" cy="120" r="4"/>
-	<circle class="feedback-arrow" cx="300" cy="380" r="4"/>
-</g>
-
-<!-- Central hub -->
-<circle class="center-dot" cx="250" cy="250" r="12"/>
-
-<!-- Smaller accent gears -->
-<g class="gear-accent" opacity="0.6">
-	<!-- Top left small gear -->
-	<circle cx="100" cy="100" r="25" stroke="#3b82f6" stroke-width="2" fill="none"/>
+	<!-- Feedback loops with animation -->
 	<g>
-		<rect x="95" y="75" width="10" height="15" rx="1"/>
-		<rect x="95" y="110" width="10" height="15" rx="1"/>
-		<rect x="75" y="95" width="15" height="10" rx="1"/>
-		<rect x="110" y="95" width="15" height="10" rx="1"/>
+		<!-- Top-right loop -->
+		<path d="M 40,-40 Q 80,-80 80,-20 Q 80,40 40,40" 
+			fill="none" stroke="url(#accentGradient)" stroke-width="4" 
+			stroke-linecap="round" stroke-dasharray="8,4">
+			<animate attributeName="stroke-dashoffset" values="0;12" dur="2s" repeatCount="indefinite"/>
+		</path>
+		<polygon points="35,35 45,40 40,50" fill="url(#accentGradient)"/>
+		
+		<!-- Bottom-left loop -->
+		<path d="M -40,40 Q -80,80 -80,20 Q -80,-40 -40,-40" 
+			fill="none" stroke="url(#accentGradient)" stroke-width="4" 
+			stroke-linecap="round" stroke-dasharray="8,4">
+			<animate attributeName="stroke-dashoffset" values="0;12" dur="2s" repeatCount="indefinite"/>
+		</path>
+		<polygon points="-35,-35 -45,-40 -40,-50" fill="url(#accentGradient)"/>
 	</g>
 	
-	<!-- Bottom right small gear -->
-	<circle cx="400" cy="400" r="25" stroke="#3b82f6" stroke-width="2" fill="none"/>
+	<!-- Orbiting elements -->
 	<g>
-		<rect x="395" y="375" width="10" height="15" rx="1"/>
-		<rect x="395" y="410" width="10" height="15" rx="1"/>
-		<rect x="375" y="395" width="15" height="10" rx="1"/>
-		<rect x="410" y="395" width="15" height="10" rx="1"/>
+		<!-- Small gear 1 -->
+		<g transform="translate(100,-60)">
+			<circle r="20" fill="#f59e0b" opacity="0.8"/>
+			<circle r="12" fill="#f97316"/>
+			<rect x="-3" y="-20" width="6" height="8" rx="1" fill="#ea580c"/>
+			<rect x="-3" y="12" width="6" height="8" rx="1" fill="#ea580c"/>
+			<rect x="-20" y="-3" width="8" height="6" rx="1" fill="#ea580c"/>
+			<rect x="12" y="-3" width="8" height="6" rx="1" fill="#ea580c"/>
+		</g>
+		
+		<!-- Small gear 2 -->
+		<g transform="translate(-100,60)">
+			<circle r="20" fill="#8b5cf6" opacity="0.8"/>
+			<circle r="12" fill="#7c3aed"/>
+			<rect x="-3" y="-20" width="6" height="8" rx="1" fill="#6d28d9"/>
+			<rect x="-3" y="12" width="6" height="8" rx="1" fill="#6d28d9"/>
+			<rect x="-20" y="-3" width="8" height="6" rx="1" fill="#6d28d9"/>
+			<rect x="12" y="-3" width="8" height="6" rx="1" fill="#6d28d9"/>
+		</g>
+		
+		<!-- Speed indicators -->
+		<g opacity="0.6">
+			<line x1="-150" y1="0" x2="-130" y2="0" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+			<line x1="130" y1="0" x2="150" y2="0" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+			<line x1="0" y1="-150" x2="0" y2="-130" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+			<line x1="0" y1="130" x2="0" y2="150" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+		</g>
+	</g>
+	
+	<!-- Floating particles for dynamism -->
+	<g opacity="0.5">
+		<circle cx="-80" cy="-100" r="3" fill="#6366f1">
+			<animate attributeName="cy" values="-100;-110;-100" dur="3s" repeatCount="indefinite"/>
+		</circle>
+		<circle cx="90" cy="90" r="3" fill="#10b981">
+			<animate attributeName="cy" values="90;100;90" dur="2.5s" repeatCount="indefinite"/>
+		</circle>
+		<circle cx="-70" cy="80" r="2" fill="#f59e0b">
+			<animate attributeName="cx" values="-70;-80;-70" dur="2s" repeatCount="indefinite"/>
+		</circle>
+		<circle cx="100" cy="-90" r="2" fill="#8b5cf6">
+			<animate attributeName="cx" values="100;110;100" dur="3.5s" repeatCount="indefinite"/>
+		</circle>
 	</g>
 </g>
 
-<!-- Speed lines for motion -->
-<g stroke="#10b981" stroke-width="2" stroke-linecap="round" opacity="0.4">
-	<line x1="80" y1="250" x2="120" y2="250"/>
-	<line x1="420" y1="250" x2="380" y2="250"/>
-	<line x1="250" y1="80" x2="250" y2="120"/>
-	<line x1="250" y1="420" x2="250" y2="380"/>
-</g>
+<!-- Brand text (optional, can be hidden for icon-only use) -->
+<text x="250" y="450" font-family="Arial, sans-serif" font-size="42" font-weight="bold" 
+	fill="url(#primaryGradient)" text-anchor="middle" opacity="0.8">GISMO</text>
 </svg>
