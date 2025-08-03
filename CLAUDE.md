@@ -35,18 +35,18 @@ docs/               # Documentation site
 The project uses mage (a make-like build tool) with these key commands:
 
 ```bash
-go tool mage all        # Format, lint, test, and build everything
-go tool mage build      # Build all binaries (smart dependency tracking)
-go tool mage test       # Run all tests with race detection and coverage
-go tool mage fmt        # Format code with gofmt
-go tool mage lint       # Run golangci-lint
-go tool mage install    # Install binaries to GOPATH
-go tool mage clean      # Clean build artifacts
-go tool mage deps       # Download and tidy dependencies
-go tool mage coverage   # Generate HTML coverage report
-go tool mage check      # Run all quality checks (fmt, lint, test)
-go tool mage info       # Show build information
-go tool mage -l         # List all available targets
+go tool mage -v all        # Format, lint, test, and build everything
+go tool mage -v build      # Build all binaries (smart dependency tracking)
+go tool mage -v test       # Run all tests with race detection and coverage
+go tool mage -v fmt        # Format code with gofmt
+go tool mage -v lint       # Run golangci-lint
+go tool mage -v install    # Install binaries to GOPATH
+go tool mage -v clean      # Clean build artifacts
+go tool mage -v deps       # Download and tidy dependencies
+go tool mage -v coverage   # Generate HTML coverage report
+go tool mage -v check      # Run all quality checks (fmt, lint, test)
+go tool mage -v info       # Show build information
+go tool mage -l            # List all available targets
 ```
 
 Build artifacts are organized in `./build/`:
@@ -115,7 +115,7 @@ Build artifacts are organized in `./build/`:
 
 ```bash
 # All tests
-go tool mage test
+go tool mage -v test
 
 # Specific test types
 go test ./pkg/...                    # Unit tests only (fast)
@@ -144,7 +144,7 @@ go test -short ./...                # Skip slow tests
 
 Always run before committing:
 ```bash
-go tool mage check
+go tool mage -v check
 ```
 
 **All linting issues are BLOCKING** - zero tolerance for:
