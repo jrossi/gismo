@@ -34,9 +34,17 @@ type GoLinter struct {
 
 // GolangConfig represents golang linter specific configuration
 type GolangConfig struct {
-	GolangciConfig *string   `json:"golangciConfig,omitempty"` // path to golangci.yml
-	DisabledChecks []string  `json:"disabledChecks,omitempty"`
-	TestTimeout    *Duration `json:"testTimeout,omitempty"`
+	GolangciConfig     *string                      `json:"golangciConfig,omitempty"` // path to golangci.yml
+	DisabledChecks     []string                     `json:"disabledChecks,omitempty"`
+	TestTimeout        *Duration                    `json:"testTimeout,omitempty"`
+	ImportRestrictions map[string]ImportRestriction `json:"importRestrictions,omitempty"` // package import restrictions
+}
+
+// ImportRestriction defines rules for restricting package imports
+type ImportRestriction struct {
+	Blocked     bool   `json:"blocked,omitempty"`     // if true, this import is completely blocked
+	Replacement string `json:"replacement,omitempty"` // suggested replacement package
+	Reason      string `json:"reason,omitempty"`      // explanation for the restriction
 }
 
 // Duration is a wrapper around time.Duration for JSON unmarshaling
@@ -307,6 +315,17 @@ func (l *GoLinter) Lint(ctx context.Context, filePath string, content []byte) (*
 		})
 	}
 
+	// Check import restrictions using AST parsing
+	importIssues := l.checkImportRestrictions(filePath, content)
+	result.Issues = append(result.Issues, importIssues...)
+
+	// Mark as failed if any import restrictions are violated
+	for _, issue := range importIssues {
+		if issue.Severity == "error" {
+			result.Success = false
+		}
+	}
+
 	// Try enhanced linting with golangci-lint fast mode
 	if golangciOutput, err := l.runGolangciLint(ctx, filePath); err == nil {
 		// Successfully ran golangci-lint, add its issues
@@ -453,6 +472,60 @@ func (l *GoLinter) extractTestFunctions(filePath string) ([]string, error) {
 	}
 
 	return testFunctions, nil
+}
+
+// checkImportRestrictions analyzes Go source code for restricted imports using AST parsing
+func (l *GoLinter) checkImportRestrictions(filePath string, content []byte) []linters.Issue {
+	var issues []linters.Issue
+
+	// Skip if no import restrictions are configured
+	if l.config == nil || len(l.config.ImportRestrictions) == 0 {
+		return issues
+	}
+
+	// Parse the file into an AST
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filePath, content, parser.ParseComments)
+	if err != nil {
+		// If we can't parse the file, skip import checking (syntax errors will be caught elsewhere)
+		return issues
+	}
+
+	// Walk through all imports in the file
+	for _, importSpec := range file.Imports {
+		if importSpec.Path == nil {
+			continue
+		}
+
+		// Extract the import path (remove quotes)
+		importPath := strings.Trim(importSpec.Path.Value, `"`)
+
+		// Check if this import is restricted
+		if restriction, exists := l.config.ImportRestrictions[importPath]; exists && restriction.Blocked {
+			// Get the position of the import
+			pos := fset.Position(importSpec.Pos())
+
+			// Build the error message
+			message := fmt.Sprintf("Import '%s' is not allowed", importPath)
+			if restriction.Reason != "" {
+				message += ": " + restriction.Reason
+			}
+			if restriction.Replacement != "" {
+				message += fmt.Sprintf(". Use '%s' instead", restriction.Replacement)
+			}
+
+			issues = append(issues, linters.Issue{
+				File:     filePath,
+				Line:     pos.Line,
+				Column:   pos.Column,
+				Severity: "error",
+				Message:  message,
+				Rule:     "import-restriction",
+			})
+		}
+	}
+
+	return issues
 }
 
 // FindModuleRoot walks up the directory tree to find go.mod
@@ -663,6 +736,17 @@ func (l *GoLinter) LintBatch(ctx context.Context, files map[string][]byte) (map[
 					Message:  "File is not properly formatted with gofmt",
 					Rule:     "gofmt",
 				})
+			}
+		}
+
+		// Check import restrictions using AST parsing
+		importIssues := l.checkImportRestrictions(filePath, content)
+		result.Issues = append(result.Issues, importIssues...)
+
+		// Mark as failed if any import restrictions are violated
+		for _, issue := range importIssues {
+			if issue.Severity == "error" {
+				result.Success = false
 			}
 		}
 

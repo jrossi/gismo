@@ -1,0 +1,74 @@
+{
+  "version": "1.0",
+  "linters": {
+    "golang": {
+      "enabled": true,
+      "config": {
+        "importRestrictions": {
+          "encoding/json": {
+            "blocked": true,
+            "replacement": "github.com/goccy/go-json",
+            "reason": "Use go-json for 2-3x better performance"
+          },
+          "io/ioutil": {
+            "blocked": true,
+            "replacement": "io and os packages",
+            "reason": "deprecated since Go 1.16"
+          },
+          "github.com/pkg/errors": {
+            "blocked": true,
+            "replacement": "fmt.Errorf with %w verb",
+            "reason": "Use standard library error wrapping"
+          },
+          "log": {
+            "blocked": true,
+            "replacement": "structured logging library like slog",
+            "reason": "Use structured logging for better observability"
+          }
+        }
+      }
+    },
+    "markdown": {
+      "enabled": true
+    },
+    "json": {
+      "enabled": true
+    },
+    "rust": {
+      "enabled": true
+    },
+    "python": {
+      "enabled": true
+    },
+    "javascript": {
+      "enabled": true
+    },
+    "protobuf": {
+      "enabled": true
+    },
+    "secrets": {
+      "enabled": true
+    }
+  },
+  "rules": [
+    {
+      "name": "strict-go-linting",
+      "patterns": ["**/*.go"],
+      "linters": {
+        "golang": {
+          "enabled": true,
+          "disabledChecks": []
+        }
+      }
+    },
+    {
+      "name": "documentation-linting",
+      "patterns": ["**/*.md", "**/README.md", "**/docs/**/*.md"],
+      "linters": {
+        "markdown": {
+          "enabled": true
+        }
+      }
+    }
+  ]
+}
