@@ -4,6 +4,7 @@ gismo-init
 gismo-show
 gismo-package
 gismo-registry
+gismo-server
 *.exe
 *.dll
 *.so

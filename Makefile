@@ -25,6 +25,7 @@ build:
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME)-show ./cmd/gismo-show
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME)-registry ./cmd/gismo-registry
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME)-package ./cmd/gismo-package
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME)-server ./cmd/gismo-server
 
 test:
 	$(GO) test -v -race -coverprofile=coverage.out ./...
@@ -46,6 +47,7 @@ install:
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/gismo-show
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/gismo-registry
 	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/gismo-package
+	$(GO) install $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/gismo-server
 
 clean:
 	rm -f $(BINARY_NAME)
@@ -53,6 +55,7 @@ clean:
 	rm -f $(BINARY_NAME)-show
 	rm -f $(BINARY_NAME)-registry
 	rm -f $(BINARY_NAME)-package
+	rm -f $(BINARY_NAME)-server
 	rm -f coverage.out
 	rm -rf dist/
 	$(GO) clean -cache
