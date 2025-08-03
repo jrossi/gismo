@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/jrossi/gismo/pkg/client"
 	"github.com/jrossi/gismo/pkg/engine"
 )
 
@@ -47,6 +48,13 @@ func main() {
 	}
 
 	flag.Parse()
+
+	// Ensure server is running
+	cli, err := client.New()
+	if err == nil {
+		// Ignore error - server startup is optional
+		_ = cli.EnsureServerRunning()
+	}
 
 	if *showVersion {
 		fmt.Printf("gismo version %s\n", version)

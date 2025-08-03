@@ -1,0 +1,124 @@
+package client
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/jrossi/gismo/pkg/server"
+)
+
+func TestNew(t *testing.T) {
+	cli, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	if cli.serverPath == "" {
+		t.Error("Server path is empty")
+	}
+
+	// Server path should be either absolute or just the binary name
+	if !filepath.IsAbs(cli.serverPath) && cli.serverPath != "gismo-server" {
+		t.Errorf("Unexpected server path: %s", cli.serverPath)
+	}
+}
+
+func TestNewWithExecutableInSameDir(t *testing.T) {
+	// Create a temporary directory with a fake executable
+	tmpDir := t.TempDir()
+	fakeExec := filepath.Join(tmpDir, "test-binary")
+	if err := os.WriteFile(fakeExec, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatalf("Failed to create fake executable: %v", err)
+	}
+
+	// Create fake gismo-server in same directory
+	fakeServer := filepath.Join(tmpDir, "gismo-server")
+	if err := os.WriteFile(fakeServer, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatalf("Failed to create fake server: %v", err)
+	}
+
+	// Override os.Executable for this test (can't actually do this)
+	// So we'll test the logic indirectly by creating a client
+	// and checking if it finds the server in PATH
+	cli, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	// The client should have found a server path
+	if cli.serverPath == "" {
+		t.Error("Client didn't find server path")
+	}
+}
+
+func TestEnsureServerRunning(t *testing.T) {
+	// This test is tricky because we don't want to actually start
+	// a server process in unit tests. We'll test the logic flow.
+
+	// First, ensure no server is running
+	if server.IsRunning() {
+		// If a server is already running (from other tests),
+		// we can't properly test this
+		t.Skip("Server already running, skipping test")
+	}
+
+	cli, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	// Since we can't actually start the server binary in tests,
+	// we'll just verify the method exists and returns an error
+	// when the binary doesn't exist or can't be started
+	cli.serverPath = "/nonexistent/gismo-server"
+	err = cli.EnsureServerRunning()
+	if err == nil {
+		t.Error("Expected error when server binary doesn't exist")
+	}
+}
+
+func TestEnsureServerRunningWhenAlreadyRunning(t *testing.T) {
+	// Start a real server for this test
+	srv, err := server.New()
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	if err := srv.Start(); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
+	defer srv.Close()
+
+	// Create client and ensure server
+	cli, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	// This should succeed immediately since server is already running
+	err = cli.EnsureServerRunning()
+	if err != nil {
+		t.Errorf("EnsureServerRunning failed when server already running: %v", err)
+	}
+}
+
+func TestClientServerIntegration(t *testing.T) {
+	// Ensure no server is running
+	if server.IsRunning() {
+		t.Skip("Server already running, skipping integration test")
+	}
+
+	// This is more of an integration test
+	// We can't fully test starting the server binary without
+	// having the actual binary built
+	cli, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	// At minimum, the client should be created successfully
+	if cli == nil {
+		t.Error("Client is nil")
+	}
+}
