@@ -35,7 +35,7 @@ $h6-font-size: 1.125rem;
 
 $headings-font-weight: 700;
 $headings-line-height: 1.2;
-$headings-color: $dark;
+$headings-color: #111827; // Darker color for better contrast
 
 // Spacing
 $spacer: 1rem;
@@ -66,9 +66,9 @@ $link-hover-color: $primary-dark;
 $link-hover-decoration: underline;
 
 // Code
-$code-color: $primary-dark;
-$code-bg: #f1f5f9;
-$pre-bg: #0f172a;
+$code-color: #d73a49;
+$code-bg: #f6f8fa;
+$pre-bg: #1e293b;
 $pre-color: #e2e8f0;
 
 // Navigation
