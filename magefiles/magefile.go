@@ -275,6 +275,21 @@ func Clean() error {
 		return fmt.Errorf("failed to remove build directory: %w", err)
 	}
 
+	// Clean Hugo/docs generated files
+	hugoArtifacts := []string{
+		"docs/public",
+		"docs/resources",
+		"docs/.hugo_build.lock",
+		"docs/node_modules",
+		"docs/themes/docsy/assets/_vendor",
+	}
+
+	for _, artifact := range hugoArtifacts {
+		if err := sh.Rm(artifact); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove %s: %w", artifact, err)
+		}
+	}
+
 	// Clean go cache
 	if err := sh.Run("go", "clean", "-cache"); err != nil {
 		return fmt.Errorf("failed to clean go cache: %w", err)
