@@ -1,5 +1,5 @@
 [package]
-name = "ccfeedback-rust-testdata"
+name = "gismo-rust-testdata"
 version = "0.1.0"
 edition = "2021"
 

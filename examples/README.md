@@ -1,6 +1,6 @@
-# CCFeedback Configuration Examples
+# Gismo Configuration Examples
 
-This directory contains example configuration files for ccfeedback.
+This directory contains example configuration files for Gismo.
 
 ## Configuration Files
 
@@ -23,11 +23,11 @@ An example configuration for team use showing:
 
 ## Configuration Loading Order
 
-CCFeedback loads configuration files in the following order (later files override earlier ones):
+Gismo loads configuration files in the following order (later files override earlier ones):
 
-1. `~/.claude/ccfeedback.json` - User's global configuration
-2. `PROJECT_DIR/.claude/ccfeedback.json` - Project-specific configuration
-3. `PROJECT_DIR/.claude/ccfeedback.local.json` - Local overrides (typically git-ignored)
+1. `~/.claude/gismo.json` - User's global configuration
+2. `PROJECT_DIR/.claude/gismo.json` - Project-specific configuration
+3. `PROJECT_DIR/.claude/gismo.local.json` - Local overrides (typically git-ignored)
 
 You can also specify a custom configuration file using the `--config` flag.
 
@@ -139,19 +139,19 @@ You can also specify a custom configuration file using the `--config` flag.
 1. Copy one of the example files to your project:
    ```bash
    mkdir -p .claude
-   cp examples/basic-config.json .claude/ccfeedback.json
+   cp examples/basic-config.json .claude/gismo.json
    ```
 
 2. Customize the configuration for your needs
 
 3. Test the configuration:
    ```bash
-   ccfeedback --config .claude/ccfeedback.json
+   gismo --config .claude/gismo.json
    ```
 
 ## Tips
 
 - Start with `basic-config.json` and add complexity as needed
-- Use `.claude/ccfeedback.local.json` for personal preferences that shouldn't be committed
+- Use `.claude/gismo.local.json` for personal preferences that shouldn't be committed
 - Use pattern-based rules to handle special cases without modifying global settings
 - Disable specific checks rather than entire linters when possible

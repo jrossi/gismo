@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2025-08-03T06:22:19.152778+09:00",
+  "lastUpdated": "2025-07-18T08:32:33.159296-04:00",
   "gitRoot": "/Users/jrossi/src/gismo/.claude",
   "hostname": "SSNC-HGTJYHKJ7T",
   "tools": {
@@ -9,21 +9,21 @@
       "biome": {
         "path": "",
         "available": false,
-        "lastCheck": "2025-08-03T06:22:19.136006+09:00",
+        "lastCheck": "2025-07-18T08:32:33.135793-04:00",
         "source": "",
         "modTime": "0001-01-01T00:00:00Z"
       },
       "oxlint": {
         "path": "",
         "available": false,
-        "lastCheck": "2025-08-03T06:22:19.141815+09:00",
+        "lastCheck": "2025-07-18T08:32:33.146015-04:00",
         "source": "",
         "modTime": "0001-01-01T00:00:00Z"
       },
       "eslint": {
         "path": "",
         "available": false,
-        "lastCheck": "2025-08-03T06:22:19.148419+09:00",
+        "lastCheck": "2025-07-18T08:32:33.155699-04:00",
         "source": "",
         "modTime": "0001-01-01T00:00:00Z"
       }
@@ -48,6 +48,6 @@
       "architecture": "arm64",
       "shell": "/bin/zsh"
     },
-    "lastUpdated": "2025-07-21T11:03:10.780081-04:00"
+    "lastUpdated": "2025-07-18T08:32:33.135641-04:00"
   }
 }

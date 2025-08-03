@@ -311,7 +311,7 @@ func (h *LintingHandler) formatLintOutput(filePath string, issues []linters2.Iss
 	var output strings.Builder
 
 	// Header similar to smart-lint.sh
-	output.WriteString(fmt.Sprintf("- [ccfeedback:%s]: ", filePath))
+	output.WriteString(fmt.Sprintf("- [gismo:%s]: ", filePath))
 
 	// Add details for each issue
 	for i, issue := range issues {
