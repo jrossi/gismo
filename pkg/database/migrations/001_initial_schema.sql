@@ -1,20 +1,25 @@
--- Initial schema for code search database
--- This creates the tables needed for vector-based code search
+-- Initial schema for code search database (DuckDB)
+
+-- Create sequences for auto-incrementing IDs
+CREATE SEQUENCE IF NOT EXISTS projects_id_seq;
+CREATE SEQUENCE IF NOT EXISTS code_chunks_id_seq;
+CREATE SEQUENCE IF NOT EXISTS search_history_id_seq;
+CREATE SEQUENCE IF NOT EXISTS index_stats_id_seq;
 
 -- Projects table for tracking Claude Code projects
 CREATE TABLE IF NOT EXISTS projects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY DEFAULT nextval('projects_id_seq'),
     project_name TEXT NOT NULL UNIQUE, -- e.g., "-Users-jrossi-src-gismo"
     project_path TEXT NOT NULL UNIQUE, -- e.g., "/Users/jrossi/src/gismo"
     description TEXT,
-    last_indexed_at DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    last_indexed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Code chunks table for storing indexed code segments
+-- Code chunks table for storing indexed code segments with vectors
 CREATE TABLE IF NOT EXISTS code_chunks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY DEFAULT nextval('code_chunks_id_seq'),
     project_id INTEGER NOT NULL,
     file_path TEXT NOT NULL, -- Relative path within project
     absolute_path TEXT NOT NULL, -- Full file path
@@ -23,11 +28,11 @@ CREATE TABLE IF NOT EXISTS code_chunks (
     language TEXT NOT NULL,
     start_line INTEGER NOT NULL,
     end_line INTEGER NOT NULL,
-    embedding BLOB, -- Vector embeddings stored as BLOB
+    embedding REAL[], -- Vector embeddings as array
     metadata TEXT, -- JSON metadata for additional information
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id)
 );
 
 -- Traditional indexes for filtering
@@ -39,21 +44,21 @@ CREATE INDEX IF NOT EXISTS idx_code_chunks_absolute_path ON code_chunks(absolute
 
 -- Search history for analytics and improvements
 CREATE TABLE IF NOT EXISTS search_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY DEFAULT nextval('search_history_id_seq'),
     query TEXT NOT NULL,
     result_count INTEGER NOT NULL,
     filters TEXT, -- JSON representation of applied filters
     execution_time_ms INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index stats for monitoring
 CREATE TABLE IF NOT EXISTS index_stats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY DEFAULT nextval('index_stats_id_seq'),
     total_chunks INTEGER NOT NULL,
     total_files INTEGER NOT NULL,
     languages TEXT NOT NULL, -- JSON array of language stats
-    last_indexed_at DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    last_indexed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

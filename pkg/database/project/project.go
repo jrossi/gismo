@@ -8,23 +8,23 @@ import (
 	"path/filepath"
 	"strings"
 
-	db "github.com/jrossi/gismo/pkg/database/sqlc"
+	"github.com/jrossi/gismo/pkg/database"
 )
 
 // Manager handles project-related operations
 type Manager struct {
-	queries *db.Queries
+	db *database.DB
 }
 
 // NewManager creates a new project manager
-func NewManager(queries *db.Queries) *Manager {
+func NewManager(db *database.DB) *Manager {
 	return &Manager{
-		queries: queries,
+		db: db,
 	}
 }
 
 // GetCurrentProject returns the current Claude Code project based on working directory
-func (m *Manager) GetCurrentProject(ctx context.Context) (*db.Project, error) {
+func (m *Manager) GetCurrentProject(ctx context.Context) (*database.Project, error) {
 	// Get current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -32,9 +32,9 @@ func (m *Manager) GetCurrentProject(ctx context.Context) (*db.Project, error) {
 	}
 
 	// Try to get project by path first
-	project, err := m.queries.GetProjectByPath(ctx, cwd)
-	if err == nil {
-		return &project, nil
+	project, err := m.db.GetProjectByPath(ctx, cwd)
+	if err == nil && project != nil {
+		return project, nil
 	}
 
 	// If not found, try to create it
@@ -43,31 +43,27 @@ func (m *Manager) GetCurrentProject(ctx context.Context) (*db.Project, error) {
 }
 
 // GetOrCreateProject gets an existing project or creates a new one
-func (m *Manager) GetOrCreateProject(ctx context.Context, projectName, projectPath string) (*db.Project, error) {
+func (m *Manager) GetOrCreateProject(ctx context.Context, projectName, projectPath string) (*database.Project, error) {
 	// Try to get existing project
-	project, err := m.queries.GetProjectByName(ctx, projectName)
-	if err == nil {
-		return &project, nil
+	project, err := m.db.GetProjectByName(ctx, projectName)
+	if err == nil && project != nil {
+		return project, nil
 	}
 
 	// Create new project
-	newProject, err := m.queries.InsertProject(ctx, db.InsertProjectParams{
-		ProjectName: projectName,
-		ProjectPath: projectPath,
-		Description: sql.NullString{
-			String: fmt.Sprintf("Claude Code project for %s", projectPath),
-			Valid:  true,
-		},
+	newProject, err := m.db.InsertProject(ctx, projectName, projectPath, sql.NullString{
+		String: fmt.Sprintf("Claude Code project for %s", projectPath),
+		Valid:  true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create project: %w", err)
 	}
 
-	return &newProject, nil
+	return newProject, nil
 }
 
 // GetProjectFromEnv gets the project based on CLAUDE_PROJECT_DIR environment variable
-func (m *Manager) GetProjectFromEnv(ctx context.Context) (*db.Project, error) {
+func (m *Manager) GetProjectFromEnv(ctx context.Context) (*database.Project, error) {
 	projectDir := os.Getenv("CLAUDE_PROJECT_DIR")
 	if projectDir == "" {
 		return m.GetCurrentProject(ctx)
@@ -77,9 +73,9 @@ func (m *Manager) GetProjectFromEnv(ctx context.Context) (*db.Project, error) {
 	projectDir = filepath.Clean(projectDir)
 
 	// Try to get project by path
-	project, err := m.queries.GetProjectByPath(ctx, projectDir)
-	if err == nil {
-		return &project, nil
+	project, err := m.db.GetProjectByPath(ctx, projectDir)
+	if err == nil && project != nil {
+		return project, nil
 	}
 
 	// If not found, create it

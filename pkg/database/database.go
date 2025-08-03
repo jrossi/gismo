@@ -9,17 +9,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	db "github.com/jrossi/gismo/pkg/database/sqlc"
-	_ "github.com/tursodatabase/go-libsql"
+	_ "github.com/marcboeker/go-duckdb"
 )
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
 type DB struct {
-	conn    *sql.DB
-	queries *db.Queries
-	dbPath  string
+	conn   *sql.DB
+	dbPath string
 }
 
 func New(ctx context.Context) (*DB, error) {
@@ -38,8 +36,8 @@ func New(ctx context.Context) (*DB, error) {
 }
 
 func NewWithPath(ctx context.Context, dbPath string) (*DB, error) {
-	connStr := fmt.Sprintf("file:%s", dbPath)
-	conn, err := sql.Open("libsql", connStr)
+	// Use DuckDB for all platforms
+	conn, err := sql.Open("duckdb", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -49,14 +47,17 @@ func NewWithPath(ctx context.Context, dbPath string) (*DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// Install and load VSS extension for vector search
+	_, _ = conn.ExecContext(ctx, "INSTALL vss")
+	_, _ = conn.ExecContext(ctx, "LOAD vss")
+
 	d := &DB{
-		conn:    conn,
-		queries: db.New(conn),
-		dbPath:  dbPath,
+		conn:   conn,
+		dbPath: dbPath,
 	}
 
 	if err := d.migrate(ctx); err != nil {
-		d.Close()
+		_ = d.Close()
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -100,10 +101,6 @@ func (d *DB) migrate(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (d *DB) Queries() *db.Queries {
-	return d.queries
 }
 
 func (d *DB) Conn() *sql.DB {

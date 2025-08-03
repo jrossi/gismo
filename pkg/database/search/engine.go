@@ -5,26 +5,25 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math"
 	"strings"
 	"time"
 
 	json "github.com/goccy/go-json"
 
 	"github.com/anush008/fastembed-go"
-	db "github.com/jrossi/gismo/pkg/database/sqlc"
-	libsqlvector "github.com/ryanskidmore/libsql-vector-go"
+	"github.com/jrossi/gismo/pkg/database"
 )
 
 type Engine struct {
-	db        *sql.DB
-	queries   *db.Queries
+	db        *database.DB
 	embedder  *fastembed.FlagEmbedding
-	projectID int64
+	projectID int
 }
 
 type CodeChunk struct {
-	ID           int64
-	ProjectID    int64
+	ID           int
+	ProjectID    int
 	FilePath     string // Relative path within project
 	AbsolutePath string // Full file path
 	Content      string
@@ -48,14 +47,13 @@ type SearchOptions struct {
 	ChunkType string
 }
 
-func NewEngine(database *sql.DB, queries *db.Queries) (*Engine, error) {
-	return NewEngineWithOptions(database, queries, true)
+func NewEngine(db *database.DB) (*Engine, error) {
+	return NewEngineWithOptions(db, true)
 }
 
-func NewEngineWithOptions(database *sql.DB, queries *db.Queries, initEmbedder bool) (*Engine, error) {
+func NewEngineWithOptions(db *database.DB, initEmbedder bool) (*Engine, error) {
 	engine := &Engine{
-		db:      database,
-		queries: queries,
+		db: db,
 	}
 
 	if initEmbedder {
@@ -77,8 +75,8 @@ func NewEngineWithOptions(database *sql.DB, queries *db.Queries, initEmbedder bo
 	return engine, nil
 }
 
-func NewEngineWithProject(database *sql.DB, queries *db.Queries, projectID int64) (*Engine, error) {
-	engine, err := NewEngine(database, queries)
+func NewEngineWithProject(db *database.DB, projectID int) (*Engine, error) {
+	engine, err := NewEngine(db)
 	if err != nil {
 		return nil, err
 	}
@@ -87,12 +85,12 @@ func NewEngineWithProject(database *sql.DB, queries *db.Queries, projectID int64
 }
 
 // SetProject sets the current project for the search engine
-func (e *Engine) SetProject(projectID int64) {
+func (e *Engine) SetProject(projectID int) {
 	e.projectID = projectID
 }
 
 // GetProject returns the current project ID
-func (e *Engine) GetProject() int64 {
+func (e *Engine) GetProject() int {
 	return e.projectID
 }
 
@@ -109,48 +107,31 @@ func (e *Engine) IndexCodeChunk(ctx context.Context, chunk CodeChunk) error {
 		return fmt.Errorf("failed to marshal metadata: %w", err)
 	}
 
-	if e.embedder != nil {
-		input := fmt.Sprintf("passage: %s", chunk.Content)
-		embeddings, err := e.embedder.Embed([]string{input}, 1)
-		if err != nil {
-			return fmt.Errorf("failed to generate embedding: %w", err)
-		}
-
-		vector := libsqlvector.NewVector(embeddings[0])
-
-		query := `
-		INSERT INTO code_chunks (project_id, file_path, absolute_path, content, chunk_type, language, start_line, end_line, embedding, metadata)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, vector(?), ?)
-		`
-
-		_, err = e.db.ExecContext(ctx, query,
-			chunk.ProjectID,
-			chunk.FilePath,
-			chunk.AbsolutePath,
-			chunk.Content,
-			chunk.ChunkType,
-			chunk.Language,
-			chunk.StartLine,
-			chunk.EndLine,
-			vector.String(),
-			string(metadata),
-		)
-		return err
-	}
-
-	// Without embedder, insert without embedding
-	_, err = e.queries.InsertCodeChunkWithoutEmbedding(ctx, db.InsertCodeChunkWithoutEmbeddingParams{
+	dbChunk := &database.CodeChunk{
 		ProjectID:    chunk.ProjectID,
 		FilePath:     chunk.FilePath,
 		AbsolutePath: chunk.AbsolutePath,
 		Content:      chunk.Content,
 		ChunkType:    chunk.ChunkType,
 		Language:     chunk.Language,
-		StartLine:    int64(chunk.StartLine),
-		EndLine:      int64(chunk.EndLine),
+		StartLine:    chunk.StartLine,
+		EndLine:      chunk.EndLine,
 		Metadata:     sql.NullString{String: string(metadata), Valid: true},
-	})
+	}
 
+	if e.embedder != nil {
+		input := fmt.Sprintf("passage: %s", chunk.Content)
+		embeddings, err := e.embedder.Embed([]string{input}, 1)
+		if err != nil {
+			return fmt.Errorf("failed to generate embedding: %w", err)
+		}
+		dbChunk.Embedding = embeddings[0]
+		_, err = e.db.InsertCodeChunk(ctx, dbChunk)
+		return err
+	}
+
+	// Without embedder, insert without embedding
+	_, err = e.db.InsertCodeChunkWithoutEmbedding(ctx, dbChunk)
 	return err
 }
 
@@ -158,14 +139,6 @@ func (e *Engine) IndexCodeChunksBatch(ctx context.Context, chunks []CodeChunk) e
 	if len(chunks) == 0 {
 		return nil
 	}
-
-	tx, err := e.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
 
 	// Set project ID for all chunks
 	for i := range chunks {
@@ -183,300 +156,280 @@ func (e *Engine) IndexCodeChunksBatch(ctx context.Context, chunks []CodeChunk) e
 			return fmt.Errorf("failed to generate embeddings: %w", err)
 		}
 
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT INTO code_chunks (project_id, file_path, absolute_path, content, chunk_type, language, start_line, end_line, embedding, metadata)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, vector(?), ?)
-		`)
-		if err != nil {
-			return fmt.Errorf("failed to prepare statement: %w", err)
-		}
-		defer stmt.Close()
-
 		for i, chunk := range chunks {
-			vector := libsqlvector.NewVector(embeddings[i])
-
 			metadata, err := json.Marshal(chunk.Metadata)
 			if err != nil {
 				return fmt.Errorf("failed to marshal metadata: %w", err)
 			}
 
-			_, err = stmt.ExecContext(ctx,
-				chunk.ProjectID,
-				chunk.FilePath,
-				chunk.AbsolutePath,
-				chunk.Content,
-				chunk.ChunkType,
-				chunk.Language,
-				chunk.StartLine,
-				chunk.EndLine,
-				vector.String(),
-				string(metadata),
-			)
-			if err != nil {
+			dbChunk := &database.CodeChunk{
+				ProjectID:    chunk.ProjectID,
+				FilePath:     chunk.FilePath,
+				AbsolutePath: chunk.AbsolutePath,
+				Content:      chunk.Content,
+				ChunkType:    chunk.ChunkType,
+				Language:     chunk.Language,
+				StartLine:    chunk.StartLine,
+				EndLine:      chunk.EndLine,
+				Embedding:    embeddings[i],
+				Metadata:     sql.NullString{String: string(metadata), Valid: true},
+			}
+
+			if _, err = e.db.InsertCodeChunk(ctx, dbChunk); err != nil {
 				return fmt.Errorf("failed to insert chunk: %w", err)
 			}
 		}
 	} else {
 		// Without embedder, insert without embeddings
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT INTO code_chunks (project_id, file_path, absolute_path, content, chunk_type, language, start_line, end_line, metadata)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`)
-		if err != nil {
-			return fmt.Errorf("failed to prepare statement: %w", err)
-		}
-		defer stmt.Close()
-
 		for _, chunk := range chunks {
 			metadata, err := json.Marshal(chunk.Metadata)
 			if err != nil {
 				return fmt.Errorf("failed to marshal metadata: %w", err)
 			}
 
-			_, err = stmt.ExecContext(ctx,
-				chunk.ProjectID,
-				chunk.FilePath,
-				chunk.AbsolutePath,
-				chunk.Content,
-				chunk.ChunkType,
-				chunk.Language,
-				chunk.StartLine,
-				chunk.EndLine,
-				string(metadata),
-			)
-			if err != nil {
+			dbChunk := &database.CodeChunk{
+				ProjectID:    chunk.ProjectID,
+				FilePath:     chunk.FilePath,
+				AbsolutePath: chunk.AbsolutePath,
+				Content:      chunk.Content,
+				ChunkType:    chunk.ChunkType,
+				Language:     chunk.Language,
+				StartLine:    chunk.StartLine,
+				EndLine:      chunk.EndLine,
+				Metadata:     sql.NullString{String: string(metadata), Valid: true},
+			}
+
+			if _, err = e.db.InsertCodeChunkWithoutEmbedding(ctx, dbChunk); err != nil {
 				return fmt.Errorf("failed to insert chunk: %w", err)
 			}
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
-func (e *Engine) SearchSemantic(ctx context.Context, query string, opts SearchOptions) ([]SearchResult, error) {
-	startTime := time.Now()
-
-	if e.embedder == nil {
-		// Fall back to keyword search when embedder is not available
-		return e.SearchKeyword(ctx, query, opts)
-	}
-
-	queryInput := fmt.Sprintf("query: %s", query)
-	queryEmbeddings, err := e.embedder.QueryEmbed(queryInput)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate query embedding: %w", err)
-	}
-
-	queryVector := libsqlvector.NewVector(queryEmbeddings)
-
-	if opts.Limit <= 0 {
-		opts.Limit = 10
-	}
-
-	sqlQuery := `
-	SELECT 
-		cc.id, cc.project_id, cc.file_path, cc.absolute_path, cc.content, cc.chunk_type, 
-		cc.language, cc.start_line, cc.end_line, cc.metadata,
-		(1.0 - vector_distance_cos(cc.embedding, vector(?))) as similarity
-	FROM vector_top_k('idx_code_chunks_embedding', vector(?), ?) vt
-	JOIN code_chunks cc ON cc.rowid = vt.id
-	WHERE cc.project_id = ?
-	`
-
-	args := []interface{}{queryVector.String(), queryVector.String(), opts.Limit, e.projectID}
-
-	var whereConditions []string
-	if opts.Language != "" {
-		whereConditions = append(whereConditions, "cc.language = ?")
-		args = append(args, opts.Language)
-	}
-	if opts.ChunkType != "" {
-		whereConditions = append(whereConditions, "cc.chunk_type = ?")
-		args = append(args, opts.ChunkType)
-	}
-
-	if len(whereConditions) > 0 {
-		sqlQuery += " AND " + strings.Join(whereConditions, " AND ")
-	}
-
-	sqlQuery += " ORDER BY similarity DESC"
-
-	rows, err := e.db.QueryContext(ctx, sqlQuery, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute search query: %w", err)
-	}
-	defer rows.Close()
-
-	var results []SearchResult
-	for rows.Next() {
-		var result SearchResult
-		var metadataStr sql.NullString
-
-		err := rows.Scan(
-			&result.ID,
-			&result.ProjectID,
-			&result.FilePath,
-			&result.AbsolutePath,
-			&result.Content,
-			&result.ChunkType,
-			&result.Language,
-			&result.StartLine,
-			&result.EndLine,
-			&metadataStr,
-			&result.Similarity,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan result: %w", err)
-		}
-
-		if metadataStr.Valid && metadataStr.String != "" {
-			if err := json.Unmarshal([]byte(metadataStr.String), &result.Metadata); err != nil {
-				log.Printf("Failed to unmarshal metadata: %v", err)
-			}
-		}
-
-		results = append(results, result)
-	}
-
-	executionTime := time.Since(startTime).Milliseconds()
-	filters := map[string]interface{}{
-		"language":   opts.Language,
-		"chunk_type": opts.ChunkType,
-		"project_id": e.projectID,
-	}
-	filtersJSON, _ := json.Marshal(filters)
-
-	_, err = e.queries.InsertSearchHistory(ctx, db.InsertSearchHistoryParams{
-		Query:           query,
-		ResultCount:     int64(len(results)),
-		Filters:         sql.NullString{String: string(filtersJSON), Valid: true},
-		ExecutionTimeMs: sql.NullInt64{Int64: executionTime, Valid: true},
-	})
-	if err != nil {
-		log.Printf("Failed to record search history: %v", err)
-	}
-
-	return results, nil
-}
-
-func (e *Engine) SearchKeyword(ctx context.Context, query string, opts SearchOptions) ([]SearchResult, error) {
+func (e *Engine) SearchCode(ctx context.Context, query string, opts SearchOptions) ([]SearchResult, error) {
 	if e.projectID == 0 {
 		return nil, fmt.Errorf("project ID not set")
 	}
 
-	if opts.Limit <= 0 {
+	if opts.Limit == 0 {
 		opts.Limit = 10
 	}
 
-	sqlQuery := `
-	SELECT 
-		id, project_id, file_path, absolute_path, content, chunk_type, language, start_line, end_line,
-		metadata, 1.0 as similarity
-	FROM code_chunks 
-	WHERE project_id = ? AND content LIKE ?
-	`
-
-	args := []interface{}{e.projectID, "%" + query + "%"}
-
-	var whereConditions []string
-	if opts.Language != "" {
-		whereConditions = append(whereConditions, "language = ?")
-		args = append(args, opts.Language)
-	}
-	if opts.ChunkType != "" {
-		whereConditions = append(whereConditions, "chunk_type = ?")
-		args = append(args, opts.ChunkType)
-	}
-
-	if len(whereConditions) > 0 {
-		sqlQuery += " AND " + strings.Join(whereConditions, " AND ")
-	}
-
-	sqlQuery += " LIMIT ?"
-	args = append(args, opts.Limit)
-
-	rows, err := e.db.QueryContext(ctx, sqlQuery, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute keyword search: %w", err)
-	}
-	defer rows.Close()
-
+	startTime := time.Now()
 	var results []SearchResult
-	for rows.Next() {
-		var result SearchResult
-		var metadataStr sql.NullString
 
-		err := rows.Scan(
-			&result.ID,
-			&result.ProjectID,
-			&result.FilePath,
-			&result.AbsolutePath,
-			&result.Content,
-			&result.ChunkType,
-			&result.Language,
-			&result.StartLine,
-			&result.EndLine,
-			&metadataStr,
-			&result.Similarity,
-		)
+	if e.embedder != nil {
+		// Generate embedding for the query
+		input := fmt.Sprintf("query: %s", query)
+		embeddings, err := e.embedder.Embed([]string{input}, 1)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan result: %w", err)
+			return nil, fmt.Errorf("failed to generate query embedding: %w", err)
 		}
 
-		if metadataStr.Valid && metadataStr.String != "" {
-			if err := json.Unmarshal([]byte(metadataStr.String), &result.Metadata); err != nil {
-				log.Printf("Failed to unmarshal metadata: %v", err)
+		// Convert embedding to DuckDB array format
+		parts := make([]string, len(embeddings[0]))
+		for i, v := range embeddings[0] {
+			parts[i] = fmt.Sprintf("%f", v)
+		}
+		embeddingStr := "[" + strings.Join(parts, ", ") + "]"
+
+		// Use DuckDB's array_cosine_similarity for vector search
+		searchQuery := `
+			SELECT 
+				cc.id, cc.project_id, cc.file_path, cc.absolute_path, cc.content,
+				cc.chunk_type, cc.language, cc.start_line, cc.end_line, cc.metadata,
+				p.project_name, p.project_path,
+				array_cosine_similarity(cc.embedding, $1::REAL[]) as similarity
+			FROM code_chunks cc
+			JOIN projects p ON cc.project_id = p.id
+			WHERE cc.project_id = $2
+				AND cc.embedding IS NOT NULL`
+
+		args := []interface{}{embeddingStr, e.projectID}
+		argIdx := 3
+
+		if opts.Language != "" {
+			searchQuery += fmt.Sprintf(" AND cc.language = $%d", argIdx)
+			args = append(args, opts.Language)
+			argIdx++
+		}
+
+		if opts.ChunkType != "" {
+			searchQuery += fmt.Sprintf(" AND cc.chunk_type = $%d", argIdx)
+			args = append(args, opts.ChunkType)
+			argIdx++
+		}
+
+		searchQuery += fmt.Sprintf(" ORDER BY similarity DESC LIMIT $%d", argIdx)
+		args = append(args, opts.Limit)
+
+		rows, err := e.db.Conn().QueryContext(ctx, searchQuery, args...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to search code chunks: %w", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var result SearchResult
+			var metadataStr sql.NullString
+			var similarity sql.NullFloat64
+
+			err := rows.Scan(
+				&result.ID,
+				&result.ProjectID,
+				&result.FilePath,
+				&result.AbsolutePath,
+				&result.Content,
+				&result.ChunkType,
+				&result.Language,
+				&result.StartLine,
+				&result.EndLine,
+				&metadataStr,
+				&result.ProjectName,
+				&result.ProjectPath,
+				&similarity,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to scan result: %w", err)
 			}
+
+			if metadataStr.Valid {
+				_ = json.Unmarshal([]byte(metadataStr.String), &result.Metadata)
+			}
+
+			if similarity.Valid {
+				result.Similarity = similarity.Float64
+			}
+
+			results = append(results, result)
+		}
+	} else {
+		// Fallback to text search without embeddings
+		searchQuery := `
+			SELECT 
+				cc.id, cc.project_id, cc.file_path, cc.absolute_path, cc.content,
+				cc.chunk_type, cc.language, cc.start_line, cc.end_line, cc.metadata,
+				p.project_name, p.project_path
+			FROM code_chunks cc
+			JOIN projects p ON cc.project_id = p.id
+			WHERE cc.project_id = $1
+				AND LOWER(cc.content) LIKE LOWER($2)`
+
+		args := []interface{}{e.projectID, "%" + query + "%"}
+		argIdx := 3
+
+		if opts.Language != "" {
+			searchQuery += fmt.Sprintf(" AND cc.language = $%d", argIdx)
+			args = append(args, opts.Language)
+			argIdx++
 		}
 
-		results = append(results, result)
+		if opts.ChunkType != "" {
+			searchQuery += fmt.Sprintf(" AND cc.chunk_type = $%d", argIdx)
+			args = append(args, opts.ChunkType)
+			argIdx++
+		}
+
+		searchQuery += fmt.Sprintf(" LIMIT $%d", argIdx)
+		args = append(args, opts.Limit)
+
+		rows, err := e.db.Conn().QueryContext(ctx, searchQuery, args...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to search code chunks: %w", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var result SearchResult
+			var metadataStr sql.NullString
+
+			err := rows.Scan(
+				&result.ID,
+				&result.ProjectID,
+				&result.FilePath,
+				&result.AbsolutePath,
+				&result.Content,
+				&result.ChunkType,
+				&result.Language,
+				&result.StartLine,
+				&result.EndLine,
+				&metadataStr,
+				&result.ProjectName,
+				&result.ProjectPath,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to scan result: %w", err)
+			}
+
+			if metadataStr.Valid {
+				_ = json.Unmarshal([]byte(metadataStr.String), &result.Metadata)
+			}
+
+			results = append(results, result)
+		}
 	}
+
+	// Record search history
+	ms := time.Since(startTime).Milliseconds()
+	if ms > math.MaxInt32 {
+		ms = math.MaxInt32
+	}
+	execTimeMs := int32(ms) // #nosec G115 -- bounded check above
+	_, _ = e.db.InsertSearchHistory(ctx, query, len(results), sql.NullString{}, sql.NullInt32{Int32: execTimeMs, Valid: true})
 
 	return results, nil
 }
 
-func (e *Engine) SearchHybrid(ctx context.Context, query string, opts SearchOptions) ([]SearchResult, error) {
-	semanticResults, err := e.SearchSemantic(ctx, query, opts)
+func (e *Engine) GetCodeChunksByFile(ctx context.Context, filePath string) ([]CodeChunk, error) {
+	if e.projectID == 0 {
+		return nil, fmt.Errorf("project ID not set")
+	}
+
+	chunks, err := e.db.GetCodeChunksByFilePath(ctx, e.projectID, filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	keywordResults, err := e.SearchKeyword(ctx, query, opts)
-	if err != nil {
-		log.Printf("Keyword search failed: %v", err)
-		return semanticResults, nil
+	var result []CodeChunk
+	for _, chunk := range chunks {
+		cc := CodeChunk{
+			ID:           chunk.ID,
+			ProjectID:    chunk.ProjectID,
+			FilePath:     chunk.FilePath,
+			AbsolutePath: chunk.AbsolutePath,
+			Content:      chunk.Content,
+			ChunkType:    chunk.ChunkType,
+			Language:     chunk.Language,
+			StartLine:    chunk.StartLine,
+			EndLine:      chunk.EndLine,
+		}
+
+		if chunk.Metadata.Valid {
+			_ = json.Unmarshal([]byte(chunk.Metadata.String), &cc.Metadata)
+		}
+
+		result = append(result, cc)
 	}
 
-	return e.combineResults(semanticResults, keywordResults, opts.Limit), nil
+	return result, nil
 }
 
-func (e *Engine) combineResults(semantic, keyword []SearchResult, limit int) []SearchResult {
-	if limit <= 0 {
-		limit = 10
+func (e *Engine) DeleteChunksByFile(ctx context.Context, filePath string) error {
+	if e.projectID == 0 {
+		return fmt.Errorf("project ID not set")
 	}
 
-	seen := make(map[int64]bool)
-	var combined []SearchResult
+	return e.db.DeleteCodeChunksByFilePath(ctx, e.projectID, filePath)
+}
 
-	for _, result := range semantic {
-		if !seen[result.ID] {
-			combined = append(combined, result)
-			seen[result.ID] = true
-		}
+func (e *Engine) DeleteAllChunks(ctx context.Context) error {
+	if e.projectID == 0 {
+		return fmt.Errorf("project ID not set")
 	}
 
-	for _, result := range keyword {
-		if !seen[result.ID] && len(combined) < limit {
-			combined = append(combined, result)
-			seen[result.ID] = true
-		}
-	}
-
-	if len(combined) > limit {
-		combined = combined[:limit]
-	}
-
-	return combined
+	return e.db.DeleteCodeChunksByProject(ctx, e.projectID)
 }
 
 func (e *Engine) GetStats(ctx context.Context) (map[string]interface{}, error) {
@@ -484,156 +437,27 @@ func (e *Engine) GetStats(ctx context.Context) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("project ID not set")
 	}
 
-	stats := make(map[string]interface{})
-	stats["project_id"] = e.projectID
-
-	totalChunks, err := e.queries.GetTotalChunksCount(ctx, e.projectID)
+	totalChunks, err := e.db.GetTotalChunksCount(ctx, e.projectID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get total chunks: %w", err)
+		return nil, err
 	}
-	stats["total_chunks"] = totalChunks
 
-	fileCount, err := e.queries.GetFileCount(ctx, e.projectID)
+	fileCount, err := e.db.GetFileCount(ctx, e.projectID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file count: %w", err)
-	}
-	stats["total_files"] = fileCount
-
-	languageStats, err := e.queries.GetLanguageStats(ctx, e.projectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get language stats: %w", err)
+		return nil, err
 	}
 
-	languages := make(map[string]int64)
-	for _, stat := range languageStats {
-		languages[stat.Language] = stat.Count
+	stats := map[string]interface{}{
+		"total_chunks": totalChunks,
+		"total_files":  fileCount,
+		"project_id":   e.projectID,
 	}
-	stats["languages"] = languages
-
-	chunkTypeStats, err := e.queries.GetChunkTypeStats(ctx, e.projectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get chunk type stats: %w", err)
-	}
-
-	chunkTypes := make(map[string]int64)
-	for _, stat := range chunkTypeStats {
-		chunkTypes[stat.ChunkType] = stat.Count
-	}
-	stats["chunk_types"] = chunkTypes
 
 	return stats, nil
 }
 
-func (e *Engine) UpdateFileChunks(ctx context.Context, filePath string, chunks []CodeChunk) error {
-	if e.projectID == 0 {
-		return fmt.Errorf("project ID not set")
-	}
-
-	tx, err := e.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
-
-	if _, err := tx.ExecContext(ctx, "DELETE FROM code_chunks WHERE project_id = ? AND file_path = ?", e.projectID, filePath); err != nil {
-		return fmt.Errorf("failed to delete old chunks: %w", err)
-	}
-
-	// Set file path and project ID for all chunks
-	for i := range chunks {
-		chunks[i].FilePath = filePath
-		chunks[i].ProjectID = e.projectID
-	}
-
-	if e.embedder != nil {
-		// Prepare statement for batch insert within transaction
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT INTO code_chunks (project_id, file_path, absolute_path, content, chunk_type, language, start_line, end_line, embedding, metadata)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, vector(?), ?)
-		`)
-		if err != nil {
-			return fmt.Errorf("failed to prepare statement: %w", err)
-		}
-		defer stmt.Close()
-
-		// Generate embeddings for all chunks
-		var inputs []string
-		for _, chunk := range chunks {
-			inputs = append(inputs, fmt.Sprintf("passage: %s", chunk.Content))
-		}
-
-		embeddings, err := e.embedder.Embed(inputs, 32)
-		if err != nil {
-			return fmt.Errorf("failed to generate embeddings: %w", err)
-		}
-
-		// Insert all chunks with their embeddings
-		for i, chunk := range chunks {
-			vector := libsqlvector.NewVector(embeddings[i])
-
-			metadata, err := json.Marshal(chunk.Metadata)
-			if err != nil {
-				return fmt.Errorf("failed to marshal metadata: %w", err)
-			}
-
-			_, err = stmt.ExecContext(ctx,
-				chunk.ProjectID,
-				chunk.FilePath,
-				chunk.AbsolutePath,
-				chunk.Content,
-				chunk.ChunkType,
-				chunk.Language,
-				chunk.StartLine,
-				chunk.EndLine,
-				vector.String(),
-				string(metadata),
-			)
-			if err != nil {
-				return fmt.Errorf("failed to insert chunk: %w", err)
-			}
-		}
-	} else {
-		// Without embedder, insert without embeddings
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT INTO code_chunks (project_id, file_path, absolute_path, content, chunk_type, language, start_line, end_line, metadata)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`)
-		if err != nil {
-			return fmt.Errorf("failed to prepare statement: %w", err)
-		}
-		defer stmt.Close()
-
-		for _, chunk := range chunks {
-			metadata, err := json.Marshal(chunk.Metadata)
-			if err != nil {
-				return fmt.Errorf("failed to marshal metadata: %w", err)
-			}
-
-			_, err = stmt.ExecContext(ctx,
-				chunk.ProjectID,
-				chunk.FilePath,
-				chunk.AbsolutePath,
-				chunk.Content,
-				chunk.ChunkType,
-				chunk.Language,
-				chunk.StartLine,
-				chunk.EndLine,
-				string(metadata),
-			)
-			if err != nil {
-				return fmt.Errorf("failed to insert chunk: %w", err)
-			}
-		}
-	}
-
-	return tx.Commit()
-}
-
+// Close cleans up resources
 func (e *Engine) Close() error {
-	if e.embedder != nil {
-		_ = e.embedder.Destroy()
-	}
+	// No need to close the database connection here as it's managed externally
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/jrossi/gismo/pkg/database"
 	"github.com/jrossi/gismo/pkg/database/search"
-	sqlcdb "github.com/jrossi/gismo/pkg/database/sqlc"
 )
 
 func TestSearchEngine(t *testing.T) {
@@ -29,135 +28,155 @@ func TestSearchEngine(t *testing.T) {
 	defer db.Close()
 
 	// Create a test project
-	testProject, err := db.Queries().InsertProject(ctx, sqlcdb.InsertProjectParams{
-		ProjectName: "-test-project",
-		ProjectPath: "/test/project",
-		Description: sql.NullString{String: "Test project", Valid: true},
-	})
+	project, err := db.InsertProject(ctx, "test-project", "/test/path", sql.NullString{})
 	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
+		t.Fatalf("Failed to create project: %v", err)
 	}
 
-	engine, err := search.NewEngineWithProject(db.Conn(), db.Queries(), testProject.ID)
+	// Create search engine
+	engine, err := search.NewEngineWithProject(db, project.ID)
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
-	defer engine.Close()
 
-	// Test indexing a single code chunk
+	// Test indexing a code chunk
 	chunk := search.CodeChunk{
 		FilePath:     "test.go",
-		AbsolutePath: "/test/project/test.go",
-		Content:      "func ParseJSON(data []byte) (interface{}, error) {\n    var result interface{}\n    err := json.Unmarshal(data, &result)\n    return result, err\n}",
+		AbsolutePath: "/test/path/test.go",
+		Content:      "func main() { fmt.Println(\"Hello, World!\") }",
 		ChunkType:    "function",
 		Language:     "go",
-		StartLine:    10,
-		EndLine:      15,
+		StartLine:    1,
+		EndLine:      1,
 		Metadata: map[string]interface{}{
-			"exported": true,
-			"package":  "parser",
+			"function": "main",
 		},
 	}
 
 	err = engine.IndexCodeChunk(ctx, chunk)
 	if err != nil {
-		t.Errorf("Failed to index code chunk: %v", err)
+		t.Fatalf("Failed to index code chunk: %v", err)
 	}
 
 	// Test batch indexing
 	chunks := []search.CodeChunk{
 		{
-			FilePath:     "handler.go",
-			AbsolutePath: "/test/project/handler.go",
-			Content:      "func HandleRequest(w http.ResponseWriter, r *http.Request) {\n    w.WriteHeader(http.StatusOK)\n    w.Write([]byte(\"OK\"))\n}",
+			FilePath:     "test2.go",
+			AbsolutePath: "/test/path/test2.go",
+			Content:      "func add(a, b int) int { return a + b }",
 			ChunkType:    "function",
 			Language:     "go",
-			StartLine:    20,
-			EndLine:      24,
+			StartLine:    1,
+			EndLine:      1,
+			Metadata: map[string]interface{}{
+				"function": "add",
+			},
 		},
 		{
-			FilePath:     "utils.go",
-			AbsolutePath: "/test/project/utils.go",
-			Content:      "func FormatString(s string) string {\n    return strings.TrimSpace(s)\n}",
+			FilePath:     "test2.go",
+			AbsolutePath: "/test/path/test2.go",
+			Content:      "func subtract(a, b int) int { return a - b }",
 			ChunkType:    "function",
 			Language:     "go",
-			StartLine:    5,
-			EndLine:      7,
+			StartLine:    3,
+			EndLine:      3,
+			Metadata: map[string]interface{}{
+				"function": "subtract",
+			},
 		},
 	}
 
 	err = engine.IndexCodeChunksBatch(ctx, chunks)
 	if err != nil {
-		t.Errorf("Failed to batch index code chunks: %v", err)
+		t.Fatalf("Failed to index code chunks batch: %v", err)
 	}
 
-	// Test semantic search (falls back to keyword when embedder unavailable)
-	results, err := engine.SearchSemantic(ctx, "JSON", search.SearchOptions{
-		Limit:    5,
+	// Test search - text search since embeddings might not be available in test
+	results, err := engine.SearchCode(ctx, "return", search.SearchOptions{
+		Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Failed to search code: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Errorf("Expected 2 results, got %d", len(results))
+	}
+
+	// Test search with language filter
+	results, err = engine.SearchCode(ctx, "func", search.SearchOptions{
+		Limit:    10,
 		Language: "go",
 	})
 	if err != nil {
-		t.Errorf("Failed to perform semantic search: %v", err)
+		t.Fatalf("Failed to search code with language filter: %v", err)
 	}
 
-	// With embedder disabled, semantic search falls back to keyword search
-	// so we need to use a keyword that exists in the content
-	if len(results) == 0 {
-		t.Error("Expected at least one search result for keyword 'JSON'")
+	if len(results) != 3 {
+		t.Errorf("Expected 3 results with language filter, got %d", len(results))
 	}
 
-	// Test keyword search
-	keywordResults, err := engine.SearchKeyword(ctx, "http", search.SearchOptions{
-		Limit: 5,
-	})
+	// Test get chunks by file
+	fileChunks, err := engine.GetCodeChunksByFile(ctx, "test2.go")
 	if err != nil {
-		t.Errorf("Failed to perform keyword search: %v", err)
+		t.Fatalf("Failed to get code chunks by file: %v", err)
 	}
 
-	if len(keywordResults) == 0 {
-		t.Error("Expected at least one keyword search result")
+	if len(fileChunks) != 2 {
+		t.Errorf("Expected 2 chunks for test2.go, got %d", len(fileChunks))
 	}
 
-	// Test hybrid search (falls back to keyword when embedder unavailable)
-	hybridResults, err := engine.SearchHybrid(ctx, "Handle", search.SearchOptions{
-		Limit: 5,
-	})
-	if err != nil {
-		t.Errorf("Failed to perform hybrid search: %v", err)
-	}
-
-	if len(hybridResults) == 0 {
-		t.Error("Expected at least one hybrid search result for keyword 'Handle'")
-	}
-
-	// Test stats
+	// Test get stats
 	stats, err := engine.GetStats(ctx)
 	if err != nil {
-		t.Errorf("Failed to get stats: %v", err)
+		t.Fatalf("Failed to get stats: %v", err)
 	}
 
-	if stats["total_chunks"].(int64) != 3 {
-		t.Errorf("Expected 3 chunks, got %v", stats["total_chunks"])
+	totalChunks, ok := stats["total_chunks"].(int64)
+	if !ok {
+		t.Error("total_chunks not found in stats")
+	} else if totalChunks != 3 {
+		t.Errorf("Expected 3 total chunks, got %d", totalChunks)
 	}
 
-	// Test update file chunks
-	newChunks := []search.CodeChunk{
-		{
-			Content:   "func NewHandler() *Handler {\n    return &Handler{}\n}",
-			ChunkType: "function",
-			Language:  "go",
-			StartLine: 1,
-			EndLine:   3,
-		},
-	}
-
-	err = engine.UpdateFileChunks(ctx, "handler.go", newChunks)
+	// Test delete chunks by file
+	err = engine.DeleteChunksByFile(ctx, "test.go")
 	if err != nil {
-		t.Errorf("Failed to update file chunks: %v", err)
+		t.Fatalf("Failed to delete chunks by file: %v", err)
+	}
+
+	stats, err = engine.GetStats(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get stats after delete: %v", err)
+	}
+
+	totalChunks, ok = stats["total_chunks"].(int64)
+	if !ok {
+		t.Error("total_chunks not found in stats after delete")
+	} else if totalChunks != 2 {
+		t.Errorf("Expected 2 total chunks after delete, got %d", totalChunks)
+	}
+
+	// Test delete all chunks
+	err = engine.DeleteAllChunks(ctx)
+	if err != nil {
+		t.Fatalf("Failed to delete all chunks: %v", err)
+	}
+
+	stats, err = engine.GetStats(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get stats after delete all: %v", err)
+	}
+
+	totalChunks, ok = stats["total_chunks"].(int64)
+	if !ok {
+		t.Error("total_chunks not found in stats after delete all")
+	} else if totalChunks != 0 {
+		t.Errorf("Expected 0 total chunks after delete all, got %d", totalChunks)
 	}
 }
 
-func TestSearchOptions(t *testing.T) {
+func TestSearchEngineWithoutEmbeddings(t *testing.T) {
 	ctx := context.Background()
 
 	tmpDir, err := os.MkdirTemp("", "gismo_search_test")
@@ -174,97 +193,47 @@ func TestSearchOptions(t *testing.T) {
 	defer db.Close()
 
 	// Create a test project
-	testProject, err := db.Queries().InsertProject(ctx, sqlcdb.InsertProjectParams{
-		ProjectName: "-test-project",
-		ProjectPath: "/test/project",
-		Description: sql.NullString{String: "Test project", Valid: true},
-	})
+	project, err := db.InsertProject(ctx, "test-project", "/test/path", sql.NullString{})
 	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
+		t.Fatalf("Failed to create project: %v", err)
 	}
 
-	engine, err := search.NewEngineWithProject(db.Conn(), db.Queries(), testProject.ID)
+	// Create search engine without embeddings
+	engine, err := search.NewEngineWithOptions(db, false)
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
-	defer engine.Close()
+	engine.SetProject(project.ID)
 
-	// Index chunks with different languages and types
-	chunks := []search.CodeChunk{
-		{
-			FilePath:     "main.go",
-			AbsolutePath: "/test/project/main.go",
-			Content:      "func main() {}",
-			ChunkType:    "function",
-			Language:     "go",
-			StartLine:    1,
-			EndLine:      1,
-		},
-		{
-			FilePath:     "test.py",
-			AbsolutePath: "/test/project/test.py",
-			Content:      "def test(): pass",
-			ChunkType:    "function",
-			Language:     "python",
-			StartLine:    1,
-			EndLine:      1,
-		},
-		{
-			FilePath:     "app.js",
-			AbsolutePath: "/test/project/app.js",
-			Content:      "class App {}",
-			ChunkType:    "class",
-			Language:     "javascript",
-			StartLine:    1,
-			EndLine:      1,
-		},
+	// Test indexing without embeddings
+	chunk := search.CodeChunk{
+		FilePath:     "test.go",
+		AbsolutePath: "/test/path/test.go",
+		Content:      "func main() { fmt.Println(\"Hello, World!\") }",
+		ChunkType:    "function",
+		Language:     "go",
+		StartLine:    1,
+		EndLine:      1,
 	}
 
-	err = engine.IndexCodeChunksBatch(ctx, chunks)
+	err = engine.IndexCodeChunk(ctx, chunk)
 	if err != nil {
-		t.Errorf("Failed to index chunks: %v", err)
+		t.Fatalf("Failed to index code chunk without embeddings: %v", err)
 	}
 
-	// Test language filter
-	results, err := engine.SearchKeyword(ctx, "", search.SearchOptions{
-		Language: "go",
-		Limit:    10,
-	})
-	if err != nil {
-		t.Errorf("Failed to search by language: %v", err)
-	}
-
-	for _, result := range results {
-		if result.Language != "go" {
-			t.Errorf("Expected language 'go', got %s", result.Language)
-		}
-	}
-
-	// Test chunk type filter
-	results, err = engine.SearchKeyword(ctx, "", search.SearchOptions{
-		ChunkType: "class",
-		Limit:     10,
-	})
-	if err != nil {
-		t.Errorf("Failed to search by chunk type: %v", err)
-	}
-
-	for _, result := range results {
-		if result.ChunkType != "class" {
-			t.Errorf("Expected chunk type 'class', got %s", result.ChunkType)
-		}
-	}
-
-	// All chunks are in the same project now, so we can test that they're all found
-	results, err = engine.SearchKeyword(ctx, "", search.SearchOptions{
+	// Test search without embeddings (falls back to text search)
+	results, err := engine.SearchCode(ctx, "Hello", search.SearchOptions{
 		Limit: 10,
 	})
 	if err != nil {
-		t.Errorf("Failed to search all chunks: %v", err)
+		t.Fatalf("Failed to search code without embeddings: %v", err)
 	}
 
-	// Should find all 3 chunks
-	if len(results) != 3 {
-		t.Errorf("Expected 3 chunks, got %d", len(results))
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result, got %d", len(results))
+	}
+
+	if len(results) > 0 && results[0].Content != chunk.Content {
+		t.Errorf("Result content doesn't match: got %s", results[0].Content)
 	}
 }

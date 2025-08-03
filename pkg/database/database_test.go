@@ -6,8 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	sqlcdb "github.com/jrossi/gismo/pkg/database/sqlc"
+	"time"
 )
 
 func TestNewDatabase(t *testing.T) {
@@ -28,10 +27,6 @@ func TestNewDatabase(t *testing.T) {
 
 	if db.conn == nil {
 		t.Error("Database connection is nil")
-	}
-
-	if db.queries == nil {
-		t.Error("Database queries is nil")
 	}
 
 	if db.dbPath != dbPath {
@@ -55,25 +50,25 @@ func TestDatabaseMigrations(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Verify tables exist by attempting to query them
-	var count int
-	err = db.conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM code_chunks").Scan(&count)
-	if err != nil {
-		t.Errorf("Failed to query code_chunks table: %v", err)
+	// Check that tables exist by attempting to query them
+	tables := []string{
+		"projects",
+		"code_chunks",
+		"search_history",
+		"index_stats",
 	}
 
-	err = db.conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM search_history").Scan(&count)
-	if err != nil {
-		t.Errorf("Failed to query search_history table: %v", err)
-	}
-
-	err = db.conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM index_stats").Scan(&count)
-	if err != nil {
-		t.Errorf("Failed to query index_stats table: %v", err)
+	for _, table := range tables {
+		query := "SELECT COUNT(*) FROM " + table
+		var count int
+		err := db.conn.QueryRowContext(ctx, query).Scan(&count)
+		if err != nil {
+			t.Errorf("Failed to query table %s: %v", table, err)
+		}
 	}
 }
 
-func TestDatabaseOperations(t *testing.T) {
+func TestProjectOperations(t *testing.T) {
 	ctx := context.Background()
 
 	tmpDir, err := os.MkdirTemp("", "gismo_db_test")
@@ -89,51 +84,210 @@ func TestDatabaseOperations(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Create a test project first
-	testProject, err := db.queries.InsertProject(ctx, sqlcdb.InsertProjectParams{
-		ProjectName: "-test-project",
-		ProjectPath: "/test/project",
-		Description: sql.NullString{String: "Test project", Valid: true},
+	// Test InsertProject
+	project, err := db.InsertProject(ctx, "test-project", "/test/path", sql.NullString{
+		String: "Test project description",
+		Valid:  true,
 	})
 	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
+		t.Fatalf("Failed to insert project: %v", err)
 	}
 
-	// Test basic insert
-	_, err = db.queries.InsertCodeChunkWithoutEmbedding(ctx, sqlcdb.InsertCodeChunkWithoutEmbeddingParams{
-		ProjectID:    testProject.ID,
+	if project.ProjectName != "test-project" {
+		t.Errorf("Expected project name to be test-project, got %s", project.ProjectName)
+	}
+
+	// Test GetProjectByName
+	retrieved, err := db.GetProjectByName(ctx, "test-project")
+	if err != nil {
+		t.Fatalf("Failed to get project by name: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("Retrieved project is nil")
+	}
+
+	if retrieved.ID != project.ID {
+		t.Errorf("Expected project ID to be %d, got %d", project.ID, retrieved.ID)
+	}
+
+	// Test GetProjectByPath
+	byPath, err := db.GetProjectByPath(ctx, "/test/path")
+	if err != nil {
+		t.Fatalf("Failed to get project by path: %v", err)
+	}
+
+	if byPath == nil {
+		t.Fatal("Retrieved project by path is nil")
+	}
+
+	if byPath.ID != project.ID {
+		t.Errorf("Expected project ID to be %d, got %d", project.ID, byPath.ID)
+	}
+
+	// Test GetAllProjects
+	projects, err := db.GetAllProjects(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get all projects: %v", err)
+	}
+
+	if len(projects) != 1 {
+		t.Errorf("Expected 1 project, got %d", len(projects))
+	}
+
+	// Test UpdateProjectIndexTime
+	err = db.UpdateProjectIndexTime(ctx, project.ID)
+	if err != nil {
+		t.Fatalf("Failed to update project index time: %v", err)
+	}
+}
+
+func TestCodeChunkOperations(t *testing.T) {
+	ctx := context.Background()
+
+	tmpDir, err := os.MkdirTemp("", "gismo_db_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := NewWithPath(ctx, dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	// Create a project first
+	project, err := db.InsertProject(ctx, "test-project", "/test/path", sql.NullString{})
+	if err != nil {
+		t.Fatalf("Failed to insert project: %v", err)
+	}
+
+	// Test InsertCodeChunkWithoutEmbedding
+	chunk := &CodeChunk{
+		ProjectID:    project.ID,
 		FilePath:     "test.go",
-		AbsolutePath: "/test/project/test.go",
-		Content:      "func TestFunction() {}",
+		AbsolutePath: "/test/path/test.go",
+		Content:      "func main() {}",
 		ChunkType:    "function",
 		Language:     "go",
 		StartLine:    1,
 		EndLine:      1,
-		Metadata:     sql.NullString{},
-	})
-	if err != nil {
-		t.Errorf("Failed to insert code chunk: %v", err)
+		Metadata:     sql.NullString{String: `{"test": "value"}`, Valid: true},
 	}
 
-	// Test query
-	chunks, err := db.queries.GetCodeChunksByFilePath(ctx, sqlcdb.GetCodeChunksByFilePathParams{
-		ProjectID: testProject.ID,
-		FilePath:  "test.go",
-	})
+	inserted, err := db.InsertCodeChunkWithoutEmbedding(ctx, chunk)
 	if err != nil {
-		t.Errorf("Failed to get code chunks: %v", err)
+		t.Fatalf("Failed to insert code chunk: %v", err)
+	}
+
+	if inserted.ID == 0 {
+		t.Error("Inserted chunk has zero ID")
+	}
+
+	// Test GetCodeChunkByID
+	retrieved, err := db.GetCodeChunkByID(ctx, inserted.ID)
+	if err != nil {
+		t.Fatalf("Failed to get code chunk by ID: %v", err)
+	}
+
+	if retrieved.Content != chunk.Content {
+		t.Errorf("Expected content to be %s, got %s", chunk.Content, retrieved.Content)
+	}
+
+	// Test InsertCodeChunk with embedding
+	chunkWithEmbedding := &CodeChunk{
+		ProjectID:    project.ID,
+		FilePath:     "test2.go",
+		AbsolutePath: "/test/path/test2.go",
+		Content:      "func test() {}",
+		ChunkType:    "function",
+		Language:     "go",
+		StartLine:    1,
+		EndLine:      1,
+		Embedding:    []float32{0.1, 0.2, 0.3},
+		Metadata:     sql.NullString{},
+	}
+
+	insertedWithEmbedding, err := db.InsertCodeChunk(ctx, chunkWithEmbedding)
+	if err != nil {
+		t.Fatalf("Failed to insert code chunk with embedding: %v", err)
+	}
+
+	if insertedWithEmbedding.ID == 0 {
+		t.Error("Inserted chunk with embedding has zero ID")
+	}
+
+	// Test GetCodeChunksByFilePath
+	chunks, err := db.GetCodeChunksByFilePath(ctx, project.ID, "test.go")
+	if err != nil {
+		t.Fatalf("Failed to get code chunks by file path: %v", err)
 	}
 
 	if len(chunks) != 1 {
 		t.Errorf("Expected 1 chunk, got %d", len(chunks))
 	}
 
-	if chunks[0].Content != "func TestFunction() {}" {
-		t.Errorf("Expected content 'func TestFunction() {}', got %s", chunks[0].Content)
+	// Test GetTotalChunksCount
+	count, err := db.GetTotalChunksCount(ctx, project.ID)
+	if err != nil {
+		t.Fatalf("Failed to get total chunks count: %v", err)
+	}
+
+	if count != 2 {
+		t.Errorf("Expected 2 chunks, got %d", count)
+	}
+
+	// Test GetFileCount
+	fileCount, err := db.GetFileCount(ctx, project.ID)
+	if err != nil {
+		t.Fatalf("Failed to get file count: %v", err)
+	}
+
+	if fileCount != 2 {
+		t.Errorf("Expected 2 files, got %d", fileCount)
+	}
+
+	// Test UpdateCodeChunkEmbedding
+	t.Logf("Updating embedding for chunk ID: %d", inserted.ID)
+	err = db.UpdateCodeChunkEmbedding(ctx, inserted.ID, []float32{0.4, 0.5, 0.6})
+	if err != nil {
+		t.Fatalf("Failed to update code chunk embedding for ID %d: %v", inserted.ID, err)
+	}
+
+	// Test DeleteCodeChunksByFilePath
+	err = db.DeleteCodeChunksByFilePath(ctx, project.ID, "test.go")
+	if err != nil {
+		t.Fatalf("Failed to delete code chunks by file path: %v", err)
+	}
+
+	count, err = db.GetTotalChunksCount(ctx, project.ID)
+	if err != nil {
+		t.Fatalf("Failed to get total chunks count after delete: %v", err)
+	}
+
+	if count != 1 {
+		t.Errorf("Expected 1 chunk after delete, got %d", count)
+	}
+
+	// Test DeleteCodeChunksByProject
+	err = db.DeleteCodeChunksByProject(ctx, project.ID)
+	if err != nil {
+		t.Fatalf("Failed to delete code chunks by project: %v", err)
+	}
+
+	count, err = db.GetTotalChunksCount(ctx, project.ID)
+	if err != nil {
+		t.Fatalf("Failed to get total chunks count after project delete: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("Expected 0 chunks after project delete, got %d", count)
 	}
 }
 
-func TestTransactions(t *testing.T) {
+func TestSearchHistory(t *testing.T) {
 	ctx := context.Background()
 
 	tmpDir, err := os.MkdirTemp("", "gismo_db_test")
@@ -149,45 +303,40 @@ func TestTransactions(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Create a test project first
-	testProject, err := db.queries.InsertProject(ctx, sqlcdb.InsertProjectParams{
-		ProjectName: "-test-project",
-		ProjectPath: "/test/project",
-		Description: sql.NullString{String: "Test project", Valid: true},
-	})
+	// Test InsertSearchHistory
+	search, err := db.InsertSearchHistory(ctx, "test query", 5,
+		sql.NullString{String: "language:go", Valid: true},
+		sql.NullInt32{Int32: 100, Valid: true})
 	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
+		t.Fatalf("Failed to insert search history: %v", err)
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatalf("Failed to begin transaction: %v", err)
+	if search.Query != "test query" {
+		t.Errorf("Expected query to be 'test query', got %s", search.Query)
 	}
 
-	// Use transaction for insert
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO code_chunks (project_id, file_path, absolute_path, content, chunk_type, language, start_line, end_line)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, testProject.ID, "transaction_test.go", "/test/project/transaction_test.go", "func TransactionTest() {}", "function", "go", 1, 1)
+	// Sleep to ensure different timestamps
+	time.Sleep(10 * time.Millisecond)
+
+	// Insert another search
+	_, err = db.InsertSearchHistory(ctx, "another query", 10,
+		sql.NullString{}, sql.NullInt32{})
 	if err != nil {
-		t.Errorf("Failed to insert in transaction: %v", err)
+		t.Fatalf("Failed to insert second search history: %v", err)
 	}
 
-	// Rollback and verify no data was saved
-	err = tx.Rollback()
+	// Test GetRecentSearches
+	searches, err := db.GetRecentSearches(ctx, 10)
 	if err != nil {
-		t.Errorf("Failed to rollback transaction: %v", err)
+		t.Fatalf("Failed to get recent searches: %v", err)
 	}
 
-	chunks, err := db.queries.GetCodeChunksByFilePath(ctx, sqlcdb.GetCodeChunksByFilePathParams{
-		ProjectID: testProject.ID,
-		FilePath:  "transaction_test.go",
-	})
-	if err != nil {
-		t.Errorf("Failed to query after rollback: %v", err)
+	if len(searches) != 2 {
+		t.Errorf("Expected 2 searches, got %d", len(searches))
 	}
 
-	if len(chunks) != 0 {
-		t.Errorf("Expected 0 chunks after rollback, got %d", len(chunks))
+	// Most recent should be first
+	if searches[0].Query != "another query" {
+		t.Errorf("Expected most recent query to be 'another query', got %s", searches[0].Query)
 	}
 }
