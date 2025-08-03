@@ -7,35 +7,18 @@ type: "cover"
 {{< blocks/cover title="Gismo" image_anchor="top" height="full" color="primary" >}}
 <div class="mx-auto">
 	<h2 class="display-4 mb-4">Stop Claude Code from going off course</h2>
-	<p class="lead mb-5">Real-time feedback loops that catch errors <strong>before</strong> they become problems.<br>
+	<p class="lead mb-5">Real-time feedback loops that catch errors before they become problems.<br>
 		Get valid code from the first attempt.</p>
-
-	<div class="mb-5">
-		<a class="btn btn-lg btn-light mr-3 mb-3" href="{{< relref "/docs/quickstart" >}}">
-			<i class="fas fa-rocket mr-2"></i>Quick Start Guide
-		</a>
-		<a class="btn btn-lg btn-outline-light mr-3 mb-3" href="{{< relref "/docs" >}}">
-			<i class="fas fa-book mr-2"></i>Documentation
-		</a>
-		<a class="btn btn-lg btn-outline-light mb-3" href="https://github.com/jrossi/gismo">
-			<i class="fab fa-github mr-2"></i>View on GitHub
-		</a>
-	</div>
-
-	<div class="row text-center mt-5">
-		<div class="col-md-4">
-			<h5><i class="fas fa-times-circle text-danger mr-2"></i>Without Gismo</h5>
-			<p class="small">Write → Test → Debug → Repeat</p>
-		</div>
-		<div class="col-md-4">
-			<h5><i class="fas fa-arrow-right text-light mr-2"></i></h5>
-			<p class="small">Software-defined feedback</p>
-		</div>
-		<div class="col-md-4">
-			<h5><i class="fas fa-check-circle text-success mr-2"></i>With Gismo</h5>
-			<p class="small">Write → Validate → Done</p>
-		</div>
-	</div>
+	<a class="btn btn-lg btn-light mr-3 mb-4" href="{{< relref "/docs/quickstart" >}}">
+		<i class="fas fa-rocket mr-2"></i>Quick Start Guide
+	</a>
+	<a class="btn btn-lg btn-outline-light mr-3 mb-4" href="{{< relref "/docs" >}}">
+		<i class="fas fa-book mr-2"></i>Documentation
+	</a>
+	<a class="btn btn-lg btn-outline-light mb-4" href="https://github.com/jrossi/gismo">
+		<i class="fab fa-github mr-2"></i>View on GitHub
+	</a>
+	<p class="lead mt-5">Transform your workflow: Write → Validate → Done</p>
 </div>
 {{< /blocks/cover >}}
 
