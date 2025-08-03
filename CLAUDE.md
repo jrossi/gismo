@@ -32,19 +32,27 @@ docs/               # Documentation site
 
 ## Build Commands
 
-The project uses a comprehensive Makefile with these key commands:
+The project uses mage (a make-like build tool) with these key commands:
 
 ```bash
-make all            # Format, lint, test, and build everything
-make build          # Build all binaries
-make test           # Run all tests with race detection and coverage
-make fmt            # Format code with gofmt
-make lint           # Run golangci-lint
-make install        # Install binaries to GOPATH
-make clean          # Clean build artifacts
-make deps           # Download and tidy dependencies
-make coverage       # Generate HTML coverage report
+go tool mage all        # Format, lint, test, and build everything
+go tool mage build      # Build all binaries (smart dependency tracking)
+go tool mage test       # Run all tests with race detection and coverage
+go tool mage fmt        # Format code with gofmt
+go tool mage lint       # Run golangci-lint
+go tool mage install    # Install binaries to GOPATH
+go tool mage clean      # Clean build artifacts
+go tool mage deps       # Download and tidy dependencies
+go tool mage coverage   # Generate HTML coverage report
+go tool mage check      # Run all quality checks (fmt, lint, test)
+go tool mage info       # Show build information
+go tool mage -l         # List all available targets
 ```
+
+Build artifacts are organized in `./build/`:
+- `./build/bin/` - Compiled binaries
+- `./build/coverage/` - Coverage reports
+- `./build/dist/` - Distribution artifacts
 
 ## Code Standards
 
@@ -107,7 +115,7 @@ make coverage       # Generate HTML coverage report
 
 ```bash
 # All tests
-make test
+go tool mage test
 
 # Specific test types
 go test ./pkg/...                    # Unit tests only (fast)
@@ -136,7 +144,7 @@ go test -short ./...                # Skip slow tests
 
 Always run before committing:
 ```bash
-make fmt && make lint && make test
+go tool mage check
 ```
 
 **All linting issues are BLOCKING** - zero tolerance for:

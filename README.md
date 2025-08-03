@@ -101,7 +101,7 @@ go get github.com/jrossi/gismo
 ```bash
 git clone https://github.com/jrossi/gismo.git
 cd gismo
-make install
+go tool mage install
 ```
 
 ## Usage
