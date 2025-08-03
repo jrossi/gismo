@@ -59,6 +59,65 @@ and comprehensive protection across all Claude Code interaction points. Optimize
 - **Fully Typed**: Strong typing for all hook message types
 - **Well Tested**: Comprehensive test coverage and benchmarks
 
+## Project Structure
+
+```text
+cmd/                    # CLI applications
+└── gismo-server/      # Server binary (main component)
+
+pkg/                   # Core library code
+├── engine/           # Rule engines and core logic
+├── linters/          # Language-specific linters
+│   ├── golang/      # Go language linting
+│   ├── javascript/  # JavaScript/TypeScript linting
+│   ├── python/      # Python linting
+│   ├── json/        # JSON validation
+│   ├── markdown/    # Markdown linting
+│   ├── secrets/     # Secret detection
+│   ├── rust/        # Rust linting
+│   └── protobuf/    # Protocol Buffer linting
+├── handlers/         # Action handlers for hooks
+├── toolcache/        # Caching utilities
+├── server/          # Server implementation
+├── client/          # Client implementation
+└── version/         # Version parsing
+
+tests/                # Centralized test organization
+├── integration/      # Cross-package integration tests
+├── e2e/             # End-to-end binary tests
+├── fixtures/        # Shared test data
+├── examples/        # Example test utilities
+└── utils/           # Test utility functions
+
+examples/            # Example configurations and demos
+docs/               # Documentation site
+magefiles/          # Build system (mage-based)
+```
+
+## Build Commands
+
+The project uses mage (a make-like build tool) with these key commands:
+
+```bash
+go tool mage -v all        # Format, lint, test, and build everything
+go tool mage -v build      # Build all binaries (smart dependency tracking)
+go tool mage -v test       # Run all tests with race detection and coverage
+go tool mage -v fmt        # Format code with gofmt
+go tool mage -v lint       # Run golangci-lint
+go tool mage -v install    # Install binaries to GOPATH
+go tool mage -v clean      # Clean build artifacts
+go tool mage -v deps       # Download and tidy dependencies
+go tool mage -v coverage   # Generate HTML coverage report
+go tool mage -v check      # Run all quality checks (fmt, lint, test)
+go tool mage -v info       # Show build information
+go tool mage -l            # List all available targets
+```
+
+Build artifacts are organized in `./build/`:
+- `./build/bin/` - Compiled binaries
+- `./build/coverage/` - Coverage reports
+- `./build/dist/` - Distribution artifacts
+
 ## Installation
 
 ### Install with Homebrew (macOS/Linux)
@@ -217,7 +276,7 @@ api := gismo.NewBuilder().
 
 ### CLI Tool
 
-The CLI tool can be used as a hook processor or to analyze configuration:
+The main CLI tool is `gismo` which can be used as a hook processor:
 
 #### Hook Processing Mode (Default)
 
@@ -237,91 +296,18 @@ gismo -debug
 gismo -config my-config.json
 ```
 
-#### Init Command
+#### Additional Command-Line Tools
 
-Set up gismo in Claude Code settings:
+The project architecture supports additional command-line utilities (planned/in development):
 
-```bash
-# Initialize gismo hooks in Claude Code settings
-gismo init
+- **`gismo-init`**: Set up gismo in Claude Code settings
+- **`gismo-show`**: Configuration inspector and analysis tool
+- **`gismo-registry`**: Package registry manager
+- **`gismo-package`**: Package manager for gismo components
+- **`gismo-server`**: Backend server component
 
-# Only update global settings (~/.claude/settings.json)
-gismo init --global
-
-# Only update project settings (.claude/settings.json)
-gismo init --project
-
-# Preview changes without applying them
-gismo init --dry-run
-
-# Apply changes without confirmation prompt
-gismo init --force
-
-# Configure for specific tools only (e.g., Write, Edit, Bash)
-gismo init --matcher "Write"
-gismo init --matcher "Bash"
-
-# Empty matcher (default) matches all tools
-gismo init --matcher ""
-```
-
-The init command:
-- Adds gismo as a PostToolUse hook in Claude Code settings
-- Shows proposed changes in diff format before applying
-- Creates timestamped backups of existing settings
-- Preserves all existing configuration and custom fields
-- Detects when gismo is already configured
-
-#### Show Command
-
-The show command provides comprehensive visibility into gismo's configuration and behavior:
-
-```bash
-# Show current configuration
-gismo show config
-
-# Show which rules and linters apply to a specific file
-gismo show filter internal/api.go
-
-# Show setup status and configuration paths
-gismo show setup
-
-# Show available linters and their status
-gismo show linters
-
-# With custom configuration file
-gismo show --config team-config.json filter pkg/public/api.go
-
-# Debug mode for more detailed output
-gismo show --debug setup
-
-# Backward compatibility: show-actions still works
-gismo show-actions internal/api.go  # Same as: gismo show filter internal/api.go
-```
-
-**Show Subcommands:**
-
-- **`show config`**: Displays the current merged configuration in JSON format
-  - Shows all linters, rules, timeouts, and parallel settings
-  - Indicates configuration file loading order in debug mode
-
-- **`show filter <file>`**: Analyzes which rules apply to a specific file
-  - Shows applicable linters for the file type
-  - Displays base configuration for each linter
-  - Shows rule hierarchy with pattern matching
-  - Displays final merged configuration after all overrides
-
-- **`show setup`**: Checks gismo setup status
-  - Binary availability in PATH
-  - Configuration file locations and status
-  - Claude integration status (hooks configured)
-  - Summary of enabled linters and rules
-
-- **`show linters`**: Lists all available linters
-  - Supported file extensions
-  - Required tools and their availability
-  - Current enabled/disabled status
-  - Custom configuration for each linter
+**Note**: These additional tools are part of the planned architecture. Currently, the main
+functionality is provided through the `gismo` CLI tool and the library API.
 
 ### Go Linting Integration
 
