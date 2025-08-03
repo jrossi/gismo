@@ -6,25 +6,26 @@ type: "docs"
 
 # Gismo
 
-High-performance Go library and CLI tool providing an extensible action handler architecture for Claude Code hooks.
-Features security-first policy enforcement, configurable rule engines, and comprehensive protection across all interaction points.
+Real-time feedback engine that optimizes Claude Code performance through immediate validation and course correction.
+Prevents AI drift and failure loops by providing instant feedback as files are written.
 
 ## Overview
 
-Gismo provides an extensible action handler system that processes Claude Code hooks with configurable policies
-and security-first design. The new architecture supports custom handlers for all hook types with priority-based
-execution, enabling fine-grained control over tool calling at every interaction point.
+Gismo creates software-defined feedback loops that dramatically improve Claude Code's effectiveness. By providing
+real-time validation, linting, and security enforcement the moment Claude Code attempts to write files, Gismo
+prevents the AI from pursuing invalid paths, eliminates cascading failures, and ensures valid output from the
+first attempt. This immediate feedback approach makes Claude Code significantly more performant and reliable.
 
 ## Key Features
 
-- **Extensible Action Handlers**: Pluggable handler architecture for all hook types
-- **Security-First Design**: Priority-based execution with security handlers running first
-- **Multi-language linting**: Go, Python, JavaScript, Markdown, and JSON
-- **File Access Control**: Block reading certificates, restrict system directory writes
-- **Secret Detection**: Prevent secrets in prompts and files using Gitleaks integration
-- **High performance**: Sub-microsecond message parsing with optimized execution
-- **Flexible configuration**: Hierarchical configuration with pattern-based overrides
-- **Hook integration**: Full Claude Code hook lifecycle support
+- **Real-Time Validation**: Files analyzed instantly as Claude Code attempts to write them
+- **Course Correction**: Prevents Claude Code from pursuing invalid implementation paths
+- **Software-Defined Feedback Loops**: Immediate analysis and correction during development
+- **Multi-language Linting**: Go, Python, JavaScript, Markdown, JSON with instant feedback
+- **Security Enforcement**: Block dangerous operations and secret exposure before they happen
+- **Context Management**: Maintains awareness of project standards and coding patterns
+- **High Performance**: Sub-microsecond processing for immediate feedback delivery
+- **Extensible Architecture**: Pluggable handlers for custom validation and policy enforcement
 
 ## Quick Start
 
@@ -36,13 +37,14 @@ Get started with Gismo in minutes:
 
 ## Use Cases
 
-- **Security Policy Enforcement**: Block dangerous file access, detect secrets in prompts
-- **Claude Code Hook Processing**: Validate code changes before and after tool execution
-- **Custom Rule Implementation**: Create handlers for specific organizational policies
-- **Multi-layered Protection**: Combine file access control, secret detection, and content filtering
-- **CI/CD Integration**: Automated code quality checks in build pipelines
-- **Development Workflows**: Real-time linting and security checks during development
-- **Team Standards**: Enforce consistent code quality and security across teams
+- **Claude Code Optimization**: Eliminate failure loops and AI drift through immediate feedback
+- **Real-Time Course Correction**: Prevent Claude Code from pursuing invalid implementation paths
+- **Instant Validation**: Catch syntax errors, style violations, and security issues immediately
+- **Performance Enhancement**: Reduce development time by eliminating "write-test-fix" cycles
+- **Context Preservation**: Maintain project standards and coding patterns throughout development
+- **Security Policy Enforcement**: Block dangerous operations before they execute
+- **Quality Assurance**: Ensure valid, high-quality code from the first attempt
+- **Team Productivity**: Accelerate development with instant feedback and validation
 
 ## Performance
 

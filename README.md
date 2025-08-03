@@ -1,8 +1,36 @@
-# Gismo - Extensible Claude Code Hooks Library
+# Gismo - Real-Time Claude Code Feedback Engine
 
-A high-performance Go library and CLI tool providing an extensible action handler architecture for Claude Code hooks.
-Features security-first policy enforcement, configurable rule engines, and comprehensive protection across all interaction points.
-Built with [go-json](https://github.com/goccy/go-json) for optimal JSON parsing performance.
+Gismo is a high-performance parsing library and hook system designed to optimize Claude Code's performance through
+immediate feedback loops. By providing real-time validation, linting, and correction as Claude Code writes files,
+Gismo prevents the AI from veering off course, eliminates failure loops, and ensures valid output from the moment
+files are created.
+
+## The Problem Gismo Solves
+
+When Claude Code operates without immediate feedback, it can:
+- Write invalid code that fails later in the development cycle
+- Go down unproductive paths due to lack of real-time validation
+- Create cascading failures that require extensive backtracking
+- Waste time on syntactically or stylistically incorrect implementations
+
+## The Gismo Solution: Software-Defined Feedback Loops
+
+Gismo creates **software-defined feedback loops** that provide instantaneous analysis and correction:
+
+🔄 **Real-Time Validation**: Files are analyzed the moment Claude Code attempts to write them
+⚡ **Immediate Correction**: Syntax errors, style violations, and policy breaches are caught instantly
+🎯 **Course Correction**: Prevents Claude Code from pursuing invalid implementation paths
+🛡️ **Security Enforcement**: Blocks dangerous operations and secret exposure before they happen
+📊 **Context Management**: Maintains awareness of project standards and coding patterns
+
+This approach makes Claude Code dramatically more performant by eliminating the traditional "write-test-fix" cycle
+in favor of "validate-while-writing" for immediate course correction.
+
+## Architecture: Extensible Action Handlers for Claude Code
+
+Built on an extensible action handler architecture with security-first policy enforcement, configurable rule engines,
+and comprehensive protection across all Claude Code interaction points. Optimized with
+[go-json](https://github.com/goccy/go-json) for maximum JSON parsing performance.
 
 ## Features
 
