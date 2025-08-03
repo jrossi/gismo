@@ -310,6 +310,28 @@ func Deps() error {
 	return sh.Run("go", "mod", "tidy")
 }
 
+// Generate runs code generation (sqlc, etc.)
+func Generate() error {
+	fmt.Println("Running code generation...")
+
+	// Check if sqlc is available
+	if err := sh.Run("which", "sqlc"); err != nil {
+		fmt.Println("sqlc not found, installing...")
+		if err := sh.Run("go", "install", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest"); err != nil {
+			return fmt.Errorf("failed to install sqlc: %w", err)
+		}
+	}
+
+	// Run sqlc generate
+	fmt.Println("Generating database code with sqlc...")
+	if err := sh.Run("sqlc", "generate"); err != nil {
+		return fmt.Errorf("failed to run sqlc generate: %w", err)
+	}
+
+	fmt.Println("✅ Code generation completed successfully")
+	return nil
+}
+
 // Coverage generates HTML coverage report
 func Coverage() error {
 	mg.Deps(Test)
