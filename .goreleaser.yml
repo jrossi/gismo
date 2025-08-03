@@ -202,6 +202,44 @@ builds:
     env:
       - CGO_ENABLED=0
 
+  - id: gismo-server
+    main: ./cmd/gismo-server
+    binary: gismo-server
+    
+    # Custom build flags
+    flags:
+      - -trimpath
+      
+    # Custom ldflags
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+    
+    # Build for multiple platforms
+    goos:
+      - linux
+      - darwin
+      - windows
+    
+    goarch:
+      - amd64
+      - arm64
+    
+    # Skip certain combinations
+    ignore:
+      - goos: windows
+        goarch: arm64
+    
+    # Set the modified timestamp on the output binary
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    
+    # Environment variables
+    env:
+      - CGO_ENABLED=0
+
 # Archive configuration
 archives:
   - id: gismo
@@ -214,27 +252,17 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     
-    # Archive format
+    # Archive format (windows gets zip, everything else gets tar.gz)
+    format: tar.gz
     format_overrides:
       - goos: windows
         format: zip
-    
-    # Include all five binaries
-    builds:
-      - gismo
-      - gismo-init
-      - gismo-show
-      - gismo-registry
-      - gismo-package
     
     # Files to include in archive
     files:
       - README.md
       - docs/*
       - examples/*
-    
-    # Use tar.gz for everything else
-    format: tar.gz
 
 # Checksum configuration
 checksum:
@@ -367,13 +395,14 @@ brews:
     # Dependencies
     dependencies: []
     
-    # Installation script
+    # Installation script - installs all binaries
     install: |
       bin.install "gismo"
-      bin.install "gismo-init"
+      bin.install "gismo-init"  
       bin.install "gismo-show"
       bin.install "gismo-registry"
       bin.install "gismo-package"
+      bin.install "gismo-server"
     
     # Test script
     test: |

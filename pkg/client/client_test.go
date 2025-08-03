@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -53,8 +54,15 @@ func TestNewWithExecutableInSameDir(t *testing.T) {
 }
 
 func TestEnsureServerRunning(t *testing.T) {
-	// This test is tricky because we don't want to actually start
-	// a server process in unit tests. We'll test the logic flow.
+	// Clean up any existing server state first by removing lock files
+	runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
+	if runtimeDir == "" {
+		runtimeDir = filepath.Join(os.TempDir(), fmt.Sprintf("gismo-%d", os.Getuid()))
+	} else {
+		runtimeDir = filepath.Join(runtimeDir, "gismo")
+	}
+	lockPath := filepath.Join(runtimeDir, "gismo.lock")
+	os.Remove(lockPath) // Ignore errors
 
 	cli, err := New()
 	if err != nil {
@@ -72,8 +80,13 @@ func TestEnsureServerRunning(t *testing.T) {
 }
 
 func TestEnsureServerRunningWhenAlreadyRunning(t *testing.T) {
-	// Use isolated temp directory for this test
-	tmpDir := t.TempDir()
+	// Use shorter temp directory for this test to avoid macOS socket path limits
+	tmpDir := "/tmp/gismo_test_" + t.Name()
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
 	srv := server.NewWithRuntimeDir(tmpDir)
 
 	if err := srv.Start(); err != nil {
