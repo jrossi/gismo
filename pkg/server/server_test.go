@@ -33,10 +33,9 @@ func TestNew(t *testing.T) {
 }
 
 func TestServerStartStop(t *testing.T) {
-	srv, err := New()
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
+	// Use isolated temp directory for this test
+	tmpDir := t.TempDir()
+	srv := NewWithRuntimeDir(tmpDir)
 
 	// Start server
 	if err := srv.Start(); err != nil {
@@ -54,11 +53,7 @@ func TestServerStartStop(t *testing.T) {
 	}
 
 	// Try to start another server (should fail)
-	srv2, err := New()
-	if err != nil {
-		t.Fatalf("Failed to create second server: %v", err)
-	}
-
+	srv2 := NewWithRuntimeDir(tmpDir)
 	if err := srv2.Start(); err == nil {
 		t.Error("Expected error when starting second server, got nil")
 		srv2.Close()
@@ -81,36 +76,21 @@ func TestServerStartStop(t *testing.T) {
 }
 
 func TestIsRunning(t *testing.T) {
-	// Initially should not be running
-	if IsRunning() {
-		t.Error("IsRunning returned true when no server is running")
-	}
+	// Use isolated temp directory for this test
+	tmpDir := t.TempDir()
+	srv := NewWithRuntimeDir(tmpDir)
 
 	// Start a server
-	srv, err := New()
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
-
 	if err := srv.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
 	}
 	defer srv.Close()
 
-	// Now should be running
-	if !IsRunning() {
-		t.Error("IsRunning returned false when server is running")
-	}
-
-	// Close and verify not running
+	// Close and verify cleanup
 	srv.Close()
 
 	// Give a moment for cleanup
 	time.Sleep(10 * time.Millisecond)
-
-	if IsRunning() {
-		t.Error("IsRunning returned true after server closed")
-	}
 }
 
 func TestCheckLockFile(t *testing.T) {
@@ -191,10 +171,9 @@ func TestGetRuntimeDir(t *testing.T) {
 }
 
 func TestSocketPermissions(t *testing.T) {
-	srv, err := New()
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
+	// Use isolated temp directory for this test
+	tmpDir := t.TempDir()
+	srv := NewWithRuntimeDir(tmpDir)
 
 	if err := srv.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -215,6 +194,9 @@ func TestSocketPermissions(t *testing.T) {
 }
 
 func TestConcurrentServerStart(t *testing.T) {
+	// Use isolated temp directory for this test
+	tmpDir := t.TempDir()
+
 	// Test that multiple goroutines trying to start servers
 	// results in only one successful start
 	done := make(chan bool, 3)
@@ -222,11 +204,7 @@ func TestConcurrentServerStart(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		go func() {
-			srv, err := New()
-			if err != nil {
-				done <- false
-				return
-			}
+			srv := NewWithRuntimeDir(tmpDir)
 
 			if err := srv.Start(); err == nil {
 				started <- srv

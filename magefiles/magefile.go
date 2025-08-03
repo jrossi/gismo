@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -56,6 +57,43 @@ func getBuildFlags() ([]string, error) {
 		version, commit, date)
 
 	return []string{"-ldflags", ldflags}, nil
+}
+
+// cleanupServers kills any running gismo-server processes and removes stale lock files
+func cleanupServers() error {
+	// Kill any running gismo-server processes
+	_ = sh.Run("pkill", "-f", "gismo-server")
+
+	// Get runtime directory and clean up lock files
+	runtimeDir := getRuntimeDir()
+	if runtimeDir != "" {
+		lockFile := filepath.Join(runtimeDir, "gismo.lock")
+		socketFile := filepath.Join(runtimeDir, "gismo.sock")
+
+		// Remove lock and socket files if they exist
+		_ = os.Remove(lockFile)
+		_ = os.Remove(socketFile)
+	}
+
+	return nil
+}
+
+// getRuntimeDir returns the gismo runtime directory
+func getRuntimeDir() string {
+	// Try XDG_RUNTIME_DIR first
+	if dir := os.Getenv("XDG_RUNTIME_DIR"); dir != "" {
+		return filepath.Join(dir, "gismo")
+	}
+
+	// Fall back to temp directory with UID
+	var uid string
+	if u, err := user.Current(); err == nil {
+		uid = u.Uid
+	} else {
+		uid = "unknown"
+	}
+
+	return filepath.Join(os.TempDir(), fmt.Sprintf("gismo-%s", uid))
 }
 
 // ensureDirs creates necessary build directories
@@ -162,9 +200,13 @@ func Build() error {
 func Test() error {
 	mg.Deps(ensureDirs)
 
+	// Clean up any stale server processes before running tests
+	if err := cleanupServers(); err != nil {
+		fmt.Printf("Warning: failed to cleanup servers: %v\n", err)
+	}
+
 	fmt.Println("Running tests...")
 	coverageFile := filepath.Join(coverageDir, "coverage.out")
-
 	return sh.Run("go", "test", "-v", "-race", "-coverprofile="+coverageFile, "./...")
 }
 

@@ -56,13 +56,6 @@ func TestEnsureServerRunning(t *testing.T) {
 	// This test is tricky because we don't want to actually start
 	// a server process in unit tests. We'll test the logic flow.
 
-	// First, ensure no server is running
-	if server.IsRunning() {
-		// If a server is already running (from other tests),
-		// we can't properly test this
-		t.Skip("Server already running, skipping test")
-	}
-
 	cli, err := New()
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
@@ -79,11 +72,9 @@ func TestEnsureServerRunning(t *testing.T) {
 }
 
 func TestEnsureServerRunningWhenAlreadyRunning(t *testing.T) {
-	// Start a real server for this test
-	srv, err := server.New()
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
+	// Use isolated temp directory for this test
+	tmpDir := t.TempDir()
+	srv := server.NewWithRuntimeDir(tmpDir)
 
 	if err := srv.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -99,16 +90,11 @@ func TestEnsureServerRunningWhenAlreadyRunning(t *testing.T) {
 	// This should succeed immediately since server is already running
 	err = cli.EnsureServerRunning()
 	if err != nil {
-		t.Errorf("EnsureServerRunning failed when server already running: %v", err)
+		t.Fatalf("Failed to start server: %v", err)
 	}
 }
 
 func TestClientServerIntegration(t *testing.T) {
-	// Ensure no server is running
-	if server.IsRunning() {
-		t.Skip("Server already running, skipping integration test")
-	}
-
 	// This is more of an integration test
 	// We can't fully test starting the server binary without
 	// having the actual binary built

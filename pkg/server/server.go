@@ -37,6 +37,15 @@ func New() (*Server, error) {
 	}, nil
 }
 
+// NewWithRuntimeDir creates a new server instance with a custom runtime directory.
+// This is primarily used for testing to avoid conflicts between parallel tests.
+func NewWithRuntimeDir(runtimeDir string) *Server {
+	return &Server{
+		socketPath: filepath.Join(runtimeDir, SocketName),
+		lockPath:   filepath.Join(runtimeDir, LockFileName),
+	}
+}
+
 // Start starts the server if it's not already running
 func (s *Server) Start() error {
 	// Try to acquire lock
