@@ -351,7 +351,7 @@ Examples:
 		if *verbose && result.ContentPreview != "" {
 			fmt.Printf("   Preview:\n%s\n", indent(result.ContentPreview, "     "))
 		}
-		
+
 		// Show full content for first result if requested
 		if *showContent && i == 0 {
 			fmt.Println("\n   --- Full Content ---")
@@ -370,7 +370,7 @@ Examples:
 			}
 			fmt.Println("   --- End Content ---")
 		}
-		
+
 		fmt.Println()
 	}
 
@@ -446,7 +446,7 @@ Examples:
 		}
 		fmt.Printf("  \"content\": %q\n", content.Content)
 		fmt.Printf("}\n")
-		
+
 	case "markdown":
 		fmt.Printf("# %s\n\n", content.Name)
 		fmt.Printf("**Type:** %s  \n", content.Type)
@@ -458,7 +458,7 @@ Examples:
 		if content.Content != "" {
 			fmt.Printf("## Content\n\n```\n%s\n```\n", content.Content)
 		}
-		
+
 	default: // text
 		fmt.Printf("Name: %s\n", content.Name)
 		fmt.Printf("Type: %s\n", content.Type)
