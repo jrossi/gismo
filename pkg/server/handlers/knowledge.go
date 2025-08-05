@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -36,9 +37,22 @@ func NewKnowledgeHandlerFromDB(db *sql.DB) *KnowledgeHandler {
 	return NewKnowledgeHandler(db)
 }
 
+// logProjectContext logs the project context from a request
+func logProjectContext(method string, ctx *gismov1.ProjectContext) {
+	if ctx == nil {
+		log.Printf("[%s] No project context provided", method)
+		return
+	}
+	if ctx.ProjectPath != "" || ctx.ProjectName != "" {
+		log.Printf("[%s] Project: path=%s, name=%s, claude_id=%s",
+			method, ctx.ProjectPath, ctx.ProjectName, ctx.ClaudeProjectId)
+	}
+}
+
 // ImportDocset handles importing a docset from URL or local path
 func (h *KnowledgeHandler) ImportDocset(req *gismov1.ImportDocsetRequest, stream gismov1.KnowledgeService_ImportDocsetServer) error {
 	ctx := stream.Context()
+	logProjectContext("ImportDocset", req.Context)
 
 	// Extract URL from request
 	var url string
@@ -174,6 +188,7 @@ func max(a, b int) int {
 
 // ListDocsets returns a list of imported docsets
 func (h *KnowledgeHandler) ListDocsets(ctx context.Context, req *gismov1.ListDocsetsRequest) (*gismov1.ListDocsetsResponse, error) {
+	logProjectContext("ListDocsets", req.Context)
 	query := `
 		SELECT id, name, version, language, source_url, source_type, imported_at, metadata,
 		       (SELECT COUNT(*) FROM docset_content WHERE docset_id = docsets.id) as content_count
@@ -245,6 +260,7 @@ func (h *KnowledgeHandler) ListDocsets(ctx context.Context, req *gismov1.ListDoc
 
 // RemoveDocset removes an imported docset
 func (h *KnowledgeHandler) RemoveDocset(ctx context.Context, req *gismov1.RemoveDocsetRequest) (*gismov1.RemoveDocsetResponse, error) {
+	logProjectContext("RemoveDocset", req.Context)
 	if req.DocsetId == "" {
 		return nil, status.Error(codes.InvalidArgument, "docset_id is required")
 	}
@@ -258,6 +274,7 @@ func (h *KnowledgeHandler) RemoveDocset(ctx context.Context, req *gismov1.Remove
 
 // Search performs a search across docsets
 func (h *KnowledgeHandler) Search(ctx context.Context, req *gismov1.SearchRequest) (*gismov1.SearchResponse, error) {
+	logProjectContext("Search", req.Context)
 	if req.Query == "" {
 		return nil, status.Error(codes.InvalidArgument, "query is required")
 	}
@@ -364,6 +381,7 @@ func (h *KnowledgeHandler) Search(ctx context.Context, req *gismov1.SearchReques
 
 // GetContent retrieves content by ID
 func (h *KnowledgeHandler) GetContent(ctx context.Context, req *gismov1.GetContentRequest) (*gismov1.GetContentResponse, error) {
+	logProjectContext("GetContent", req.Context)
 	if req.ContentId == 0 {
 		return nil, status.Error(codes.InvalidArgument, "content_id is required")
 	}
@@ -430,6 +448,7 @@ func (h *KnowledgeHandler) GetContent(ctx context.Context, req *gismov1.GetConte
 
 // ExecuteQuery executes a raw SQL query
 func (h *KnowledgeHandler) ExecuteQuery(ctx context.Context, req *gismov1.QueryRequest) (*gismov1.QueryResponse, error) {
+	logProjectContext("ExecuteQuery", req.Context)
 	if req.Sql == "" {
 		return nil, status.Error(codes.InvalidArgument, "sql is required")
 	}
@@ -497,6 +516,7 @@ func (h *KnowledgeHandler) ExecuteQuery(ctx context.Context, req *gismov1.QueryR
 
 // ExecuteQueryStream executes a raw SQL query with streaming results
 func (h *KnowledgeHandler) ExecuteQueryStream(req *gismov1.QueryRequest, stream gismov1.KnowledgeService_ExecuteQueryStreamServer) error {
+	logProjectContext("ExecuteQueryStream", req.Context)
 	if req.Sql == "" {
 		return status.Error(codes.InvalidArgument, "sql is required")
 	}

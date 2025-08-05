@@ -17,7 +17,7 @@ require (
 	github.com/teekennedy/goldmark-markdown v0.5.1 // indirect
 	github.com/yuin/goldmark v1.7.12 // indirect
 	go.abhg.dev/goldmark/frontmatter v0.2.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

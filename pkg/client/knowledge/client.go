@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/jrossi/gismo/pkg/database/project"
 	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
 )
 
@@ -18,6 +19,43 @@ import (
 type Client struct {
 	conn   *grpc.ClientConn
 	client gismov1.KnowledgeServiceClient
+}
+
+// getProjectContext returns the current project context
+func getProjectContext() *gismov1.ProjectContext {
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		// If we can't get cwd, return empty context
+		return &gismov1.ProjectContext{}
+	}
+
+	// Check if we're in a Claude project directory
+	claudeProjectDir := os.Getenv("CLAUDE_PROJECT_DIR")
+	if claudeProjectDir != "" {
+		cwd = claudeProjectDir
+	}
+
+	// Convert to Claude project name format
+	projectName := project.PathToProjectName(cwd)
+
+	// Check if we have a Claude project ID in environment
+	claudeProjectID := os.Getenv("CLAUDE_PROJECT_ID")
+
+	// Also check if ~/.claude/projects/<project-name> exists
+	// This would confirm we're in a Claude Code context
+	homeDir, _ := os.UserHomeDir()
+	if homeDir != "" {
+		claudeProjectPath := filepath.Join(homeDir, ".claude", "projects", projectName)
+		// Just checking existence, no action needed if it exists
+		_, _ = os.Stat(claudeProjectPath)
+	}
+
+	return &gismov1.ProjectContext{
+		ProjectPath:     cwd,
+		ProjectName:     projectName,
+		ClaudeProjectId: claudeProjectID,
+	}
 }
 
 // New creates a new knowledge client
@@ -64,6 +102,7 @@ func (c *Client) Close() error {
 // ImportDocset imports a docset from a URL with progress callbacks
 func (c *Client) ImportDocset(ctx context.Context, url string, progress func(stage, message string, percent int)) error {
 	stream, err := c.client.ImportDocset(ctx, &gismov1.ImportDocsetRequest{
+		Context: getProjectContext(),
 		Source: &gismov1.ImportDocsetRequest_Url{
 			Url: url,
 		},
@@ -92,7 +131,9 @@ func (c *Client) ImportDocset(ctx context.Context, url string, progress func(sta
 
 // ListDocsets returns all imported docsets
 func (c *Client) ListDocsets(ctx context.Context) ([]*gismov1.Docset, error) {
-	resp, err := c.client.ListDocsets(ctx, &gismov1.ListDocsetsRequest{})
+	resp, err := c.client.ListDocsets(ctx, &gismov1.ListDocsetsRequest{
+		Context: getProjectContext(),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list docsets: %w", err)
 	}
@@ -102,6 +143,7 @@ func (c *Client) ListDocsets(ctx context.Context) ([]*gismov1.Docset, error) {
 // RemoveDocset removes a docset by ID
 func (c *Client) RemoveDocset(ctx context.Context, docsetID string) error {
 	resp, err := c.client.RemoveDocset(ctx, &gismov1.RemoveDocsetRequest{
+		Context:  getProjectContext(),
 		DocsetId: docsetID,
 	})
 	if err != nil {
@@ -122,9 +164,10 @@ func (c *Client) Search(ctx context.Context, query string, opts SearchOptions) (
 	}
 
 	req := &gismov1.SearchRequest{
-		Query: query,
-		Type:  convertSearchType(opts.Type),
-		Limit: int32(limit), // #nosec G115 -- bounded above
+		Context: getProjectContext(),
+		Query:   query,
+		Type:    convertSearchType(opts.Type),
+		Limit:   int32(limit), // #nosec G115 -- bounded above
 	}
 
 	if len(opts.DocsetIDs) > 0 {
@@ -142,6 +185,7 @@ func (c *Client) Search(ctx context.Context, query string, opts SearchOptions) (
 // GetContent retrieves content by ID
 func (c *Client) GetContent(ctx context.Context, contentID int32) (*gismov1.GetContentResponse, error) {
 	return c.client.GetContent(ctx, &gismov1.GetContentRequest{
+		Context:   getProjectContext(),
 		ContentId: contentID,
 	})
 }
@@ -149,6 +193,7 @@ func (c *Client) GetContent(ctx context.Context, contentID int32) (*gismov1.GetC
 // ExecuteQuery executes a raw SQL query
 func (c *Client) ExecuteQuery(ctx context.Context, sql string, maxRows int32) (*gismov1.QueryResponse, error) {
 	return c.client.ExecuteQuery(ctx, &gismov1.QueryRequest{
+		Context: getProjectContext(),
 		Sql:     sql,
 		MaxRows: maxRows,
 	})
@@ -157,7 +202,8 @@ func (c *Client) ExecuteQuery(ctx context.Context, sql string, maxRows int32) (*
 // ExecuteQueryStream executes a SQL query with streaming results
 func (c *Client) ExecuteQueryStream(ctx context.Context, sql string, handler func(*gismov1.QueryResult) error) error {
 	stream, err := c.client.ExecuteQueryStream(ctx, &gismov1.QueryRequest{
-		Sql: sql,
+		Context: getProjectContext(),
+		Sql:     sql,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)

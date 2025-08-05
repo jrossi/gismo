@@ -1,0 +1,194 @@
+syntax = "proto3";
+
+package gismo.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/jrossi/gismo/pkg/generated/gismo/v1;gismov1";
+
+service KnowledgeService {
+  // Docset management
+  rpc ImportDocset(ImportDocsetRequest) returns (stream ImportProgress);
+  rpc ListDocsets(ListDocsetsRequest) returns (ListDocsetsResponse);
+  rpc RemoveDocset(RemoveDocsetRequest) returns (RemoveDocsetResponse);
+
+  // Search operations
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc GetContent(GetContentRequest) returns (GetContentResponse);
+
+  // Raw SQL access
+  rpc ExecuteQuery(QueryRequest) returns (QueryResponse);
+  rpc ExecuteQueryStream(QueryRequest) returns (stream QueryResult);
+}
+
+// Project context for all requests
+message ProjectContext {
+  string project_path = 1;      // Absolute path to project directory (e.g., /Users/jrossi/src/gismo)
+  string project_name = 2;      // Claude project name format (e.g., -Users-jrossi-src-gismo)
+  string claude_project_id = 3; // Optional Claude project ID if available
+}
+
+// Import docset request with URL or local path
+message ImportDocsetRequest {
+  ProjectContext context = 1;  // Project context for request
+  oneof source {
+    string url = 2;        // Download from URL (e.g., https://kapeli.com/feeds/Go.tgz)
+    string local_path = 3; // Local .docset path
+  }
+  string name = 4;         // Optional override name
+  bool force_reimport = 5; // Override if already imported
+  map<string, string> metadata = 6;
+}
+
+// Import progress updates
+message ImportProgress {
+  enum Stage {
+    STAGE_UNSPECIFIED = 0;
+    DOWNLOADING = 1;
+    EXTRACTING = 2;
+    PARSING = 3;
+    IMPORTING = 4;
+    INDEXING = 5;
+    COMPLETE = 6;
+    ERROR = 7;
+  }
+
+  Stage stage = 1;
+  string message = 2;
+  int32 progress_percent = 3;
+  int32 items_processed = 4;
+  int32 items_total = 5;
+  string error = 6;  // Only set if stage == ERROR
+  string docset_id = 7; // Set when COMPLETE
+}
+
+// List docsets request
+message ListDocsetsRequest {
+  ProjectContext context = 1;  // Project context for request
+  // Optional filters
+  string name_filter = 2;
+  string language_filter = 3;
+}
+
+// List docsets response
+message ListDocsetsResponse {
+  repeated Docset docsets = 1;
+}
+
+// Docset information
+message Docset {
+  string id = 1;
+  string name = 2;
+  string version = 3;
+  string language = 4;
+  string source_url = 5;
+  string source_type = 6; // 'official', 'user', 'custom'
+  google.protobuf.Timestamp imported_at = 7;
+  map<string, string> metadata = 8;
+  int32 content_count = 9;
+}
+
+// Remove docset request
+message RemoveDocsetRequest {
+  ProjectContext context = 1;  // Project context for request
+  string docset_id = 2;
+}
+
+// Remove docset response
+message RemoveDocsetResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Search request
+message SearchRequest {
+  ProjectContext context = 1;  // Project context for request
+  string query = 2;
+  repeated string docset_ids = 3;  // Empty = search all
+  SearchType type = 4;
+  int32 limit = 5;
+  float min_score = 6;
+
+  enum SearchType {
+    SEARCH_TYPE_UNSPECIFIED = 0;
+    KEYWORD = 1;
+    SEMANTIC = 2;
+    HYBRID = 3;  // Both keyword and semantic
+  }
+}
+
+// Search response
+message SearchResponse {
+  repeated SearchResult results = 1;
+  int32 total_count = 2;
+  int64 execution_time_ms = 3;
+}
+
+// Search result
+message SearchResult {
+  string docset_id = 1;
+  string docset_name = 2;
+  string item_name = 3;
+  string item_type = 4;  // Class, Method, Function, etc.
+  string content_preview = 5;
+  float relevance_score = 6;
+  string path = 7;
+  int32 content_id = 8;
+}
+
+// Get content request
+message GetContentRequest {
+  ProjectContext context = 1;  // Project context for request
+  int32 content_id = 2;
+}
+
+// Get content response
+message GetContentResponse {
+  string docset_id = 1;
+  string name = 2;
+  string type = 3;
+  string path = 4;
+  string content = 5;
+  string summary = 6;
+  map<string, string> metadata = 7;
+}
+
+// Query request for raw SQL
+message QueryRequest {
+  ProjectContext context = 1;  // Project context for request
+  string sql = 2;
+  google.protobuf.Struct parameters = 3;
+  int32 max_rows = 4;  // Safety limit
+  int32 timeout_ms = 5;
+}
+
+// Query response
+message QueryResponse {
+  repeated string columns = 1;
+  repeated google.protobuf.Struct rows = 2;
+  int32 affected_rows = 3;
+  string error = 4;
+  int64 execution_time_ms = 5;
+}
+
+// Streaming query result
+message QueryResult {
+  oneof result {
+    QueryMetadata metadata = 1;
+    google.protobuf.Struct row = 2;
+    QueryComplete complete = 3;
+    string error = 4;
+  }
+}
+
+// Query metadata (sent first in stream)
+message QueryMetadata {
+  repeated string columns = 1;
+}
+
+// Query completion info
+message QueryComplete {
+  int32 total_rows = 1;
+  int64 execution_time_ms = 2;
+}
