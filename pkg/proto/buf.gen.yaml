@@ -1,0 +1,14 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/jrossi/gismo/pkg/generated
+plugins:
+  - plugin: buf.build/protocolbuffers/go
+    out: ../generated
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/grpc/go
+    out: ../generated
+    opt:
+      - paths=source_relative

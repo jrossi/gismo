@@ -1,11 +1,17 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"google.golang.org/grpc"
+
+	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
+	"github.com/jrossi/gismo/pkg/server/handlers"
 )
 
 const (
@@ -17,10 +23,12 @@ const (
 
 // Server represents the gismo background server
 type Server struct {
-	socketPath string
-	lockPath   string
-	listener   net.Listener
-	lockFile   *os.File
+	socketPath  string
+	lockPath    string
+	listener    net.Listener
+	lockFile    *os.File
+	grpcServer  *grpc.Server
+	knowledgeDB *sql.DB
 }
 
 // New creates a new server instance
@@ -34,6 +42,21 @@ func New() (*Server, error) {
 	return &Server{
 		socketPath: filepath.Join(runtimeDir, SocketName),
 		lockPath:   filepath.Join(runtimeDir, LockFileName),
+	}, nil
+}
+
+// NewWithKnowledgeDB creates a new server instance with a knowledge database
+func NewWithKnowledgeDB(db *sql.DB) (*Server, error) {
+	// Get runtime directory
+	runtimeDir, err := getRuntimeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get runtime directory: %w", err)
+	}
+
+	return &Server{
+		socketPath:  filepath.Join(runtimeDir, SocketName),
+		lockPath:    filepath.Join(runtimeDir, LockFileName),
+		knowledgeDB: db,
 	}, nil
 }
 
@@ -70,6 +93,23 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
+	// Initialize gRPC server
+	s.grpcServer = grpc.NewServer()
+
+	// Register knowledge service if database is available
+	if s.knowledgeDB != nil {
+		knowledgeHandler := handlers.NewKnowledgeHandlerFromDB(s.knowledgeDB)
+		gismov1.RegisterKnowledgeServiceServer(s.grpcServer, knowledgeHandler)
+	}
+
+	// Start serving in background
+	go func() {
+		if err := s.grpcServer.Serve(s.listener); err != nil {
+			// Server was likely stopped gracefully
+			_ = err
+		}
+	}()
+
 	return nil
 }
 
@@ -77,7 +117,11 @@ func (s *Server) Start() error {
 func (s *Server) Close() error {
 	var errs []error
 
-	if s.listener != nil {
+	// Stop gRPC server gracefully (this also closes the listener)
+	if s.grpcServer != nil {
+		s.grpcServer.GracefulStop()
+	} else if s.listener != nil {
+		// Only close listener manually if gRPC server wasn't started
 		if err := s.listener.Close(); err != nil {
 			errs = append(errs, fmt.Errorf("failed to close listener: %w", err))
 		}
