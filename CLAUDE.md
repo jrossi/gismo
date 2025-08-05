@@ -1,21 +1,30 @@
 # Gismo Development Guide
 
-This is a Go project implementing an extensible Claude Code hooks system with security-first action handlers and comprehensive linting capabilities.
+This is a Go project implementing an extensible Claude Code hooks system with security-first action handlers,
+comprehensive linting capabilities, and intelligent knowledge management using DuckDB for cross-platform code
+search and documentation.
 
 ## Project Structure
 
-```
+```text
 cmd/                    # CLI applications
-├── gismo/             # Main binary
-├── gismo-init/        # Setup tool
-├── gismo-show/        # Configuration inspector
-├── gismo-registry/    # Package registry manager
-└── gismo-package/     # Package manager
+├── gismo/             # Main binary (hook processor)
+├── gismo-server/      # Server binary with gRPC API
+├── gismo-knowledge/   # Knowledge base management
+├── gismo-query/       # SQL query interface for knowledge DB
+├── gismo-init/        # Setup tool (planned)
+├── gismo-show/        # Configuration inspector (planned)
+├── gismo-registry/    # Package registry manager (planned)
+└── gismo-package/     # Package manager (planned)
 
 pkg/                   # Core library code
 ├── engine/           # Rule engines and core logic
 ├── linters/          # Language-specific linters
 ├── handlers/         # Action handlers for hooks
+├── database/         # DuckDB-based knowledge management
+├── knowledge/        # Knowledge system core logic
+├── server/           # gRPC server implementation
+├── client/           # gRPC client implementation
 ├── toolcache/        # Caching utilities
 └── version/          # Version parsing
 
@@ -36,7 +45,7 @@ The project uses mage (a make-like build tool) with these key commands:
 
 ```bash
 go tool mage -v all        # Format, lint, test, and build everything
-go tool mage -v build      # Build all binaries (smart dependency tracking)
+go tool mage -v build      # Build all binaries (main tools)
 go tool mage -v test       # Run all tests with race detection and coverage
 go tool mage -v fmt        # Format code with gofmt
 go tool mage -v lint       # Run golangci-lint
@@ -220,4 +229,5 @@ Hierarchical configuration with:
 4. **Implement parallel execution** where safe
 5. **Cache expensive operations** appropriately
 
-This project maintains high standards for code quality, security, and performance. All contributions must meet these standards before being accepted.
+This project maintains high standards for code quality, security, and performance. All contributions must meet
+these standards before being accepted.

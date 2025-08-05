@@ -8,17 +8,23 @@ description: >
 
 # CLI Reference
 
-Gismo provides a command-line interface for processing Claude Code hooks and analyzing linting configurations.
+Gismo provides a comprehensive command-line interface for processing Claude Code hooks, analyzing linting
+configurations, and managing knowledge bases with documentation and code search capabilities.
 
 ## Installation
 
 ```bash
+# Install all CLI tools
 go install github.com/jrossi/gismo/cmd/gismo@latest
+go install github.com/jrossi/gismo/cmd/gismo-knowledge@latest
+go install github.com/jrossi/gismo/cmd/gismo-query@latest
 ```
 
 ## Commands
 
-### Default Mode (Hook Processing)
+### gismo - Hook Processing
+
+#### Default Mode (Hook Processing)
 
 Process Claude Code hook messages from stdin:
 
@@ -36,7 +42,7 @@ gismo -config my-config.json
 gismo -debug
 ```
 
-### init Command
+#### init Command
 
 Set up gismo in Claude Code settings:
 
@@ -70,7 +76,7 @@ The `init` command:
 - Preserves all existing configuration and custom fields
 - Detects when gismo is already configured
 
-### show Command
+#### show Command
 
 The `show` command provides comprehensive visibility into gismo's configuration and behavior.
 It includes several subcommands:
@@ -145,6 +151,114 @@ gismo show filter internal/api.go
 - **`show filter <file>`**: Shows which linters and rules apply to a specific file
 - **`show setup`**: Checks binary availability, config files, and Claude integration
 - **`show linters`**: Lists all linters with their supported files and tool requirements
+
+### gismo-knowledge - Knowledge Base Management
+
+Manage docsets, documentation, and searchable knowledge:
+
+```bash
+# Import Go documentation from Kapeli Dash feeds
+gismo-knowledge import --url https://kapeli.com/feeds/Go.xml
+
+# Import from local docset
+gismo-knowledge import --path ~/Downloads/Python.docset
+
+# List all installed docsets
+gismo-knowledge list
+
+# Search across all knowledge sources
+gismo-knowledge search "http handler"
+
+# Search with content preview
+gismo-knowledge search -v "error handling"
+
+# Get full content by ID
+gismo-knowledge get 123
+
+# Show knowledge base statistics
+gismo-knowledge stats
+
+# Remove a docset
+gismo-knowledge remove Go
+```
+
+#### Knowledge Commands
+
+- **`import`**: Import docsets from URLs or local paths
+- **`list`**: List all installed docsets with statistics
+- **`search`**: Search across all knowledge sources with various options
+- **`get`**: Retrieve full content by ID
+- **`remove`**: Remove docsets from the knowledge base
+- **`stats`**: Show comprehensive knowledge base statistics
+- **`push`**: Push files or content to knowledge base (planned)
+- **`index`**: Manage search indexes (planned)
+
+### gismo-query - SQL Query Interface
+
+Execute SQL queries directly against the knowledge database:
+
+```bash
+# List all docsets
+gismo-query "SELECT * FROM docsets"
+
+# Search for content
+gismo-query "SELECT name, type, path FROM docset_content WHERE name LIKE '%http%' LIMIT 10"
+
+# Get statistics
+gismo-query "SELECT docset_id, COUNT(*) as count FROM docset_content GROUP BY docset_id"
+
+# Interactive mode
+gismo-query
+# gismo> SELECT * FROM docsets;
+# gismo> .tables
+# gismo> .quit
+
+# Stream large results
+gismo-query --stream "SELECT * FROM docset_content"
+
+# Output formats
+gismo-query --format json "SELECT id, name, version FROM docsets"
+gismo-query --format csv "SELECT * FROM docsets"
+
+# Query from pipe
+echo "SELECT COUNT(*) FROM docsets" | gismo-query
+```
+
+#### Query Features
+
+- **Interactive shell**: SQL REPL with `.tables`, `.schema`, `.help` commands
+- **Multiple output formats**: table, JSON, CSV
+- **Streaming results**: Handle large datasets efficiently
+- **Pipe support**: Integrate with shell scripts and workflows
+- **Special commands**: `.tables` to list tables, `.schema` for schemas
+
+#### Database Schema
+
+Key tables in the knowledge database:
+
+```sql
+-- Docsets table
+CREATE TABLE docsets (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    version TEXT,
+    language TEXT,
+    source_url TEXT,
+    imported_at TIMESTAMP,
+    content_count INTEGER
+);
+
+-- Content table
+CREATE TABLE docset_content (
+    id INTEGER PRIMARY KEY,
+    docset_id TEXT,
+    name TEXT,
+    type TEXT,
+    path TEXT,
+    content TEXT,
+    summary TEXT
+);
+```
 
 ## Global Flags
 

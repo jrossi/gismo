@@ -6,15 +6,17 @@ type: "docs"
 
 # Gismo
 
-Real-time feedback engine that optimizes Claude Code performance through immediate validation and course correction.
-Prevents AI drift and failure loops by providing instant feedback as files are written.
+Real-time feedback engine that optimizes Claude Code performance through immediate validation, course correction,
+and intelligent knowledge management. Prevents AI drift and failure loops by providing instant feedback as files
+are written and contextual knowledge access during development.
 
 ## Overview
 
 Gismo creates software-defined feedback loops that dramatically improve Claude Code's effectiveness. By providing
-real-time validation, linting, and security enforcement the moment Claude Code attempts to write files, Gismo
-prevents the AI from pursuing invalid paths, eliminates cascading failures, and ensures valid output from the
-first attempt. This immediate feedback approach makes Claude Code significantly more performant and reliable.
+real-time validation, linting, security enforcement, and contextual knowledge access the moment Claude Code
+attempts to write files, Gismo prevents the AI from pursuing invalid paths, eliminates cascading failures, and
+ensures valid output from the first attempt. This immediate feedback approach combined with intelligent knowledge
+management makes Claude Code significantly more performant and reliable.
 
 ## Key Features
 
@@ -24,6 +26,9 @@ first attempt. This immediate feedback approach makes Claude Code significantly 
 - **Multi-language Linting**: Go, Python, JavaScript, Markdown, JSON with instant feedback
 - **Security Enforcement**: Block dangerous operations and secret exposure before they happen
 - **Context Management**: Maintains awareness of project standards and coding patterns
+- **Knowledge Management**: Import and search docsets, documentation, and code knowledge
+- **Vector Search**: Semantic similarity search using DuckDB with cross-platform support
+- **SQL Query Interface**: Direct database access for advanced knowledge queries
 - **High Performance**: Sub-microsecond processing for immediate feedback delivery
 - **Extensible Architecture**: Pluggable handlers for custom validation and policy enforcement
 

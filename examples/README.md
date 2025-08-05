@@ -1,6 +1,7 @@
 # Gismo Configuration Examples
 
-This directory contains example configuration files for Gismo.
+This directory contains example configuration files for Gismo, including setup for the hook system,
+linting configurations, and knowledge management integration.
 
 ## Configuration Files
 
@@ -134,7 +135,86 @@ You can also specify a custom configuration file using the `--config` flag.
 }
 ```
 
-## Usage
+## Knowledge System Usage Examples
+
+### Setting Up Documentation Import
+
+```bash
+# Import Go documentation for your project
+gismo-knowledge import --url https://kapeli.com/feeds/Go.xml
+
+# Import Python documentation
+gismo-knowledge import --url https://kapeli.com/feeds/Python_3.xml
+
+# Import from local docset
+gismo-knowledge import --path ~/Downloads/React.docset
+```
+
+### Searching Your Knowledge Base
+
+```bash
+# Basic search for HTTP-related content
+gismo-knowledge search "http handler"
+
+# Search with content preview
+gismo-knowledge search -v "error handling patterns"
+
+# Search within specific docset
+gismo-knowledge search --docset Go "context cancellation"
+
+# Get detailed content by ID
+gismo-knowledge get 42
+```
+
+### Advanced SQL Queries
+
+```sql
+-- Find all function-type entries across docsets
+SELECT d.name as docset, c.name, c.path
+FROM docsets d
+JOIN docset_content c ON d.id = c.docset_id
+WHERE c.type = 'Function'
+LIMIT 20;
+
+-- Get content statistics by docset
+SELECT d.name, d.version, COUNT(c.id) as entries,
+       AVG(LENGTH(c.content)) as avg_content_length
+FROM docsets d
+LEFT JOIN docset_content c ON d.id = c.docset_id
+GROUP BY d.id, d.name, d.version;
+
+-- Search for error handling patterns
+SELECT c.name, c.type, c.path,
+       SUBSTR(c.content, 1, 200) as preview
+FROM docset_content c
+WHERE c.content LIKE '%error%'
+  AND c.content LIKE '%handle%'
+LIMIT 10;
+```
+
+### Integration with Claude Code
+
+Configure your `.claude/hooks.json` to include knowledge-aware validation:
+
+```json
+{
+  "PreToolUse": [
+    {
+      "command": "gismo",
+      "tool_patterns": ["Write", "Edit", "MultiEdit"]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "command": "gismo-knowledge search --limit 3",
+      "tool_patterns": ["Write"],
+      "description": "Find relevant documentation for new code"
+    }
+  ]
+}
+```
+
+## Configuration Usage
 
 1. Copy one of the example files to your project:
    ```bash
@@ -147,6 +227,12 @@ You can also specify a custom configuration file using the `--config` flag.
 3. Test the configuration:
    ```bash
    gismo --config .claude/gismo.json
+   ```
+
+4. Set up knowledge base for your project:
+   ```bash
+   # Import relevant documentation
+   gismo-knowledge import --url https://kapeli.com/feeds/YourFramework.xml
    ```
 
 ## Tips

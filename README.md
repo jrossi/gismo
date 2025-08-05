@@ -1,9 +1,9 @@
 # Gismo - Real-Time Claude Code Feedback Engine
 
 Gismo is a high-performance parsing library and hook system designed to optimize Claude Code's performance through
-immediate feedback loops. By providing real-time validation, linting, and correction as Claude Code writes files,
-Gismo prevents the AI from veering off course, eliminates failure loops, and ensures valid output from the moment
-files are created.
+immediate feedback loops. By providing real-time validation, linting, correction, and intelligent knowledge management
+as Claude Code operates, Gismo prevents the AI from veering off course, eliminates failure loops, and ensures valid
+output with contextual awareness from the moment files are created.
 
 ## The Problem Gismo Solves
 
@@ -51,6 +51,7 @@ and comprehensive protection across all Claude Code interaction points. Optimize
 - **High Performance**: Uses go-json for 2-3x faster JSON parsing
 - **Parallel Execution**: Concurrent handler processing for optimal speed
 - **Smart Caching**: Efficient rule evaluation and pattern matching
+- **Knowledge Database**: DuckDB-powered knowledge management with vector search capabilities
 
 ### 🛠️ **Developer Experience**
 - **Comprehensive Analysis**: Runs gosimple, ineffassign, gofmt, goimports, and many more linters
@@ -58,12 +59,17 @@ and comprehensive protection across all Claude Code interaction points. Optimize
 - **Configuration Support**: Hierarchical config with pattern-based overrides
 - **Fully Typed**: Strong typing for all hook message types
 - **Well Tested**: Comprehensive test coverage and benchmarks
+- **Knowledge Management**: Import and search docsets, documentation, and code knowledge
+- **SQL Query Interface**: Direct SQL access to knowledge database for advanced queries
 
 ## Project Structure
 
 ```text
 cmd/                    # CLI applications
-└── gismo-server/      # Server binary (main component)
+├── gismo/             # Main binary (hook processor)
+├── gismo-server/      # Server binary (main component)
+├── gismo-knowledge/   # Knowledge base management
+└── gismo-query/       # SQL query interface for knowledge DB
 
 pkg/                   # Core library code
 ├── engine/           # Rule engines and core logic
@@ -80,6 +86,8 @@ pkg/                   # Core library code
 ├── toolcache/        # Caching utilities
 ├── server/          # Server implementation
 ├── client/          # Client implementation
+├── database/        # DuckDB-based knowledge management
+├── knowledge/       # Knowledge system core logic
 └── version/         # Version parsing
 
 tests/                # Centralized test organization
@@ -118,6 +126,35 @@ Build artifacts are organized in `./build/`:
 - `./build/coverage/` - Coverage reports
 - `./build/dist/` - Distribution artifacts
 
+## Knowledge System Features
+
+### 🗄️ **Docset Management**
+- **Import from Kapeli Dash feeds**: Direct integration with popular documentation sources
+- **Local docset support**: Import .docset directories and archives
+- **Version tracking**: Maintain multiple versions of documentation
+- **Automatic indexing**: Full-text and semantic search capabilities
+
+### 🔍 **Advanced Search**
+- **Keyword search**: Fast text-based search across all content
+- **Semantic search**: Vector-based similarity search (when available)
+- **Hybrid search**: Combine keyword and semantic approaches
+- **Docset filtering**: Limit searches to specific documentation sets
+- **Content preview**: See relevant snippets before diving deep
+
+### 🏗️ **Database Architecture**
+- **DuckDB backend**: Cross-platform embedded OLAP database
+- **Vector search**: HNSW indexing for similarity search
+- **Project isolation**: Separate knowledge contexts per Claude Code project
+- **SQL interface**: Direct database access for advanced queries
+- **Performance optimized**: Efficient storage and retrieval for large docsets
+
+### 📊 **Query Interface**
+- **Interactive SQL shell**: Explore the knowledge database interactively
+- **Multiple output formats**: Table, JSON, CSV output options
+- **Streaming results**: Handle large query results efficiently
+- **Pipe support**: Integrate with shell scripts and workflows
+- **Timeout controls**: Configurable query execution limits
+
 ## Installation
 
 ### Install with Homebrew (macOS/Linux)
@@ -148,8 +185,10 @@ curl -L https://github.com/jrossi/gismo/releases/latest/download/gismo_Darwin_ar
 ### Install with Go
 
 ```bash
-# Install the CLI tool
+# Install all CLI tools
 go install github.com/jrossi/gismo/cmd/gismo@latest
+go install github.com/jrossi/gismo/cmd/gismo-knowledge@latest
+go install github.com/jrossi/gismo/cmd/gismo-query@latest
 
 # Use as a library
 go get github.com/jrossi/gismo
@@ -274,7 +313,9 @@ api := gismo.NewBuilder().
     Build()
 ```
 
-### CLI Tool
+### CLI Tools
+
+#### Hook Processing with `gismo`
 
 The main CLI tool is `gismo` which can be used as a hook processor:
 
@@ -296,18 +337,83 @@ gismo -debug
 gismo -config my-config.json
 ```
 
-#### Additional Command-Line Tools
+#### Knowledge Management with `gismo-knowledge`
 
-The project architecture supports additional command-line utilities (planned/in development):
+Manage docsets, documentation, and searchable knowledge:
+
+```bash
+# Import Go documentation from Kapeli Dash feeds
+gismo-knowledge import --url https://kapeli.com/feeds/Go.xml
+
+# Import from local docset
+gismo-knowledge import --path ~/Downloads/Python.docset
+
+# List all installed docsets
+gismo-knowledge list
+
+# Search across all knowledge sources
+gismo-knowledge search "http handler"
+
+# Search with content preview
+gismo-knowledge search -v "error handling"
+
+# Get full content by ID
+gismo-knowledge get 123
+
+# Show knowledge base statistics
+gismo-knowledge stats
+
+# Remove a docset
+gismo-knowledge remove Go
+```
+
+#### Direct SQL Queries with `gismo-query`
+
+Execute SQL queries against the knowledge database:
+
+```bash
+# List all docsets
+gismo-query "SELECT * FROM docsets"
+
+# Search for specific content
+gismo-query "SELECT name, type, path FROM docset_content WHERE name LIKE '%http%' LIMIT 10"
+
+# Get docset statistics
+gismo-query "SELECT docset_id, COUNT(*) as count FROM docset_content GROUP BY docset_id"
+
+# Interactive mode
+gismo-query
+# gismo> SELECT * FROM docsets;
+# gismo> .tables
+# gismo> .quit
+
+# Stream large results
+gismo-query --stream "SELECT * FROM docset_content"
+
+# Output as JSON or CSV
+gismo-query --format json "SELECT id, name, version FROM docsets"
+gismo-query --format csv "SELECT * FROM docsets"
+
+# Query from pipe
+echo "SELECT COUNT(*) FROM docsets" | gismo-query
+```
+
+#### Knowledge Management Tools
+
+Gismo includes comprehensive knowledge management capabilities:
+
+- **`gismo-knowledge`**: Manage docsets, import documentation, and search knowledge base
+- **`gismo-query`**: Execute SQL queries directly against the knowledge database
+- **`gismo-server`**: Backend server component with gRPC API
+
+#### Additional Command-Line Tools (Planned)
+
+The project architecture supports additional command-line utilities in development:
 
 - **`gismo-init`**: Set up gismo in Claude Code settings
 - **`gismo-show`**: Configuration inspector and analysis tool
 - **`gismo-registry`**: Package registry manager
 - **`gismo-package`**: Package manager for gismo components
-- **`gismo-server`**: Backend server component
-
-**Note**: These additional tools are part of the planned architecture. Currently, the main
-functionality is provided through the `gismo` CLI tool and the library API.
 
 ### Go Linting Integration
 
