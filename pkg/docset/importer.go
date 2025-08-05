@@ -43,6 +43,22 @@ func (i *Importer) Import(ctx context.Context, docsetPath string, sourceURL stri
 		return fmt.Errorf("failed to parse docset: %w", err)
 	}
 
+	// Extract name and version from the docset path if not properly parsed
+	if docset.Info.Name == "Info" || docset.Info.Name == "" {
+		// Extract from directory name (e.g., "Go.docset" -> "Go")
+		baseName := filepath.Base(docsetPath)
+		if strings.HasSuffix(baseName, ".docset") {
+			docset.Info.Name = strings.TrimSuffix(baseName, ".docset")
+		}
+	}
+
+	// Try to extract version from URL if not present
+	if docset.Info.Version == "" || docset.Info.Version == "unknown" {
+		// For now, use a placeholder - in production, this could query a feed service
+		// or extract from the docset contents
+		docset.Info.Version = "latest"
+	}
+
 	// Generate docset ID
 	docsetID := generateDocsetID(docset.Info.Name, docset.Info.Version)
 

@@ -43,6 +43,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/flatbuffers v25.1.24+incompatible // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gotnospirit/makeplural v0.0.0-20180622080156-a5f48d94d976 // indirect
 	github.com/gotnospirit/messageformat v0.0.0-20221001023931-dfe49f1eb092 // indirect
@@ -109,6 +110,10 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	mvdan.cc/gofumpt v0.8.0 // indirect
 )
 
-tool github.com/magefile/mage
+tool (
+	github.com/magefile/mage
+	mvdan.cc/gofumpt
+)

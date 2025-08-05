@@ -139,6 +139,13 @@ func (c *Client) Search(ctx context.Context, query string, opts SearchOptions) (
 	return resp.Results, nil
 }
 
+// GetContent retrieves content by ID
+func (c *Client) GetContent(ctx context.Context, contentID int32) (*gismov1.GetContentResponse, error) {
+	return c.client.GetContent(ctx, &gismov1.GetContentRequest{
+		ContentId: contentID,
+	})
+}
+
 // ExecuteQuery executes a raw SQL query
 func (c *Client) ExecuteQuery(ctx context.Context, sql string, maxRows int32) (*gismov1.QueryResponse, error) {
 	return c.client.ExecuteQuery(ctx, &gismov1.QueryRequest{

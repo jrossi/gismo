@@ -1,38 +1,77 @@
 # Gismo Code Style and Conventions
 
-## Go Standards
-- Follow standard Go formatting (gofmt)
-- Use meaningful variable names (`userID` not `id`)
-- Early returns to reduce nesting
-- Concrete types from constructors: `func NewServer() *Server`
-- Simple error handling: `return fmt.Errorf("context: %w", err)`
+## Go-Specific Rules ⚠️ STRICTLY ENFORCED
 
-## Forbidden Patterns (Enforced by smart-lint hook)
-- **NO interface{}** or **any{}** - use concrete types!
-- **NO time.Sleep()** or busy waits - use channels for synchronization!
-- **NO** keeping old and new code together
-- **NO** migration functions or compatibility layers
-- **NO** versioned function names (processV2, handleNew)
-- **NO** custom error struct hierarchies
-- **NO** TODOs in final code
+### FORBIDDEN PATTERNS (automated blocking)
+- ❌ `interface{}` or `any{}` - use concrete types
+- ❌ `time.Sleep()` or busy waits - use channels for synchronization
+- ❌ Custom error struct hierarchies
+- ❌ Migration functions or compatibility layers
+- ❌ Versioned function names (processV2, handleNew)
+- ❌ TODOs in final code
+- ❌ Commented-out code blocks
 
-## Required Standards
-- **Delete** old code when replacing it
-- **Channels for synchronization**: Use channels to signal readiness, not sleep
-- **Select for timeouts**: Use `select` with timeout channels, not sleep loops
-- **Table-driven tests** for complex logic
-- **Godoc on all exported symbols**
+### REQUIRED STANDARDS
+- ✅ **Delete old code** when replacing it
+- ✅ **Meaningful names**: `userID` not `id`
+- ✅ **Early returns** to reduce nesting
+- ✅ **Concrete types** from constructors: `func NewServer() *Server`
+- ✅ **Simple errors**: `return fmt.Errorf("context: %w", err)`
+- ✅ **Table-driven tests** for complex logic
+- ✅ **Use go-json**: `json "github.com/goccy/go-json"` for performance
+- ✅ **Channels for synchronization**: Use channels to signal readiness
+- ✅ **Select for timeouts**: Use `select` with timeout channels
+- ✅ **Godoc on all exported symbols**
 
 ## Project Structure
 ```
-cmd/        # Application entrypoints
-internal/   # Private code (the majority goes here)  
-pkg/        # Public libraries (only if truly reusable)
-linters/    # Language-specific linter implementations
+cmd/                    # CLI applications
+├── gismo/             # Main binary
+├── gismo-init/        # Setup tool
+├── gismo-show/        # Configuration inspector
+├── gismo-registry/    # Package registry manager
+└── gismo-package/     # Package manager
+
+pkg/                   # Core library code
+├── engine/           # Rule engines and core logic
+├── linters/          # Language-specific linters
+├── handlers/         # Action handlers for hooks
+├── database/         # DuckDB-based code search
+├── toolcache/        # Caching utilities
+└── version/          # Version parsing
+
+tests/                # Centralized test organization
+├── integration/      # Cross-package integration tests
+├── e2e/             # End-to-end binary tests
+├── fixtures/        # Shared test data
+└── utils/           # Test utility functions
 ```
 
+## Performance Standards
+- Use `github.com/goccy/go-json` instead of `encoding/json`
+- Implement parallel execution where appropriate
+- Use smart caching for rule evaluation
+- Profile before optimizing (use pprof for real bottlenecks)
+
+## Security Standards
+- Validate all inputs
+- Use crypto/rand for randomness
+- Prepared statements for SQL (never concatenate)
+- Never log or expose secrets and keys
+- Implement security-first handler execution
+
 ## Testing Strategy
-- Complex business logic → Write tests first
-- Simple CRUD → Write tests after
+- **Unit Tests**: Co-located with source in `pkg/`
+- **Integration Tests**: `tests/integration/`
+- **End-to-End Tests**: `tests/e2e/`
+- **Test Data**: `tests/fixtures/`
+- Complex logic → Table-driven tests
 - Hot paths → Add benchmarks
 - Skip tests for main() and simple CLI parsing
+
+## Database Conventions
+- Use DuckDB for cross-platform compatibility
+- Direct SQL queries (no ORM/sqlc)
+- Proper array handling for embeddings
+- Sequences for auto-increment (not SERIAL)
+- Handle DuckDB-specific behaviors in tests

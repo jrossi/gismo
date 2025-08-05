@@ -1,26 +1,52 @@
 # Gismo Project Overview
 
 ## Purpose
-Gismo is a Claude Code Hook System that provides intelligent linting and code analysis for various programming languages and file types. It acts as a middleware layer between Claude Code and external linting tools, providing standardized feedback on code quality, formatting, and style issues.
+Gismo is an extensible Claude Code hooks system with security-first action handlers and comprehensive linting capabilities. It provides intelligent code validation, formatting checks, and quality assurance for various programming languages through a pluggable handler architecture.
 
 ## Key Features
-- Multi-language support (Go, JavaScript, Python, Markdown, Protobuf, Rust, etc.)
-- Intelligent tool detection and fallback strategies
-- Rule-based configuration system with pattern matching
-- Caching system for performance optimization
-- Integration with Claude Code through hooks
-- Pre-tool and post-tool validation workflows
+- **Extensible action handler system** with priority-based execution
+- **Security handlers run first** (highest priority)
+- **Multi-language linting** with intelligent fallback strategies
+- **Code search with vector embeddings** using DuckDB (cross-platform)
+- **Rule-based pattern matching** with hierarchical configuration
+- **Caching system** for performance optimization
+- **Integration with Claude Code** through all hook types
+- **Package registry support** for sharing linters and tools
 
 ## Tech Stack
-- **Language**: Go 1.23.2
-- **Build System**: Make
-- **Testing**: Go's built-in testing framework with race detection
-- **Dependencies**: Minimal external dependencies (see go.mod for details)
-- **Linting Tools**: golangci-lint, gofmt, staticcheck, and various language-specific linters
+- **Language**: Go 1.23+
+- **Build System**: Mage (make-like build tool in Go)
+- **Database**: DuckDB with VSS extension for vector search
+- **JSON**: github.com/goccy/go-json for 2-3x faster parsing
+- **Testing**: Go's built-in testing with race detection
+- **Linting**: golangci-lint with 30+ linters enabled
 
 ## Architecture
-- Command-line tools in `cmd/` directory
-- Core logic in root package
-- Language-specific linters in `linters/` subdirectories
-- Shared configuration and utility code
-- Integration tests in `e2e_test/` directory
+```
+cmd/                    # CLI applications
+├── gismo/             # Main binary
+├── gismo-init/        # Setup tool
+├── gismo-show/        # Configuration inspector
+├── gismo-registry/    # Package registry manager
+└── gismo-package/     # Package manager
+
+pkg/                   # Core library code
+├── engine/           # Rule engines and core logic
+├── linters/          # Language-specific linters
+├── handlers/         # Action handlers for hooks
+├── database/         # DuckDB-based code search
+├── toolcache/        # Caching utilities
+└── version/          # Version parsing
+
+tests/                # Centralized test organization
+├── integration/      # Cross-package integration tests
+├── e2e/             # End-to-end binary tests
+├── fixtures/        # Shared test data
+└── utils/           # Test utility functions
+```
+
+## Database Features
+- **Cross-platform support**: Windows, macOS, Linux via DuckDB
+- **Vector search**: Similarity search using embeddings
+- **Project isolation**: Separate code contexts per project
+- **No external dependencies**: Embedded database approach

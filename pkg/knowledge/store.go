@@ -66,6 +66,11 @@ func NewWithPath(ctx context.Context, dbPath string) (*Store, error) {
 	return s, nil
 }
 
+// NewWithDB creates a new knowledge store with an existing database connection
+func NewWithDB(db *sql.DB) *Store {
+	return &Store{db: db}
+}
+
 // initSchema creates the database schema if it doesn't exist
 func (s *Store) initSchema(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, createSchema)

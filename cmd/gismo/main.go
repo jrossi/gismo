@@ -37,6 +37,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  show <command>          Show various information (config, filter, setup, linters)\n")
 		fmt.Fprintf(os.Stderr, "  registry <subcommand>   Manage package registries (add, remove, list, update)\n")
 		fmt.Fprintf(os.Stderr, "  package <subcommand>    Manage packages (install, remove, list, update)\n")
+		fmt.Fprintf(os.Stderr, "  query [SQL]             Execute SQL queries against the knowledge database\n")
 		fmt.Fprintf(os.Stderr, "\nFlags:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nDefault behavior (no command):\n")
@@ -276,6 +277,50 @@ func main() {
 		packageArgs = append(packageArgs, args[1:]...)
 
 		cmd := exec.Command(subcommand, packageArgs...) // #nosec G204 - subcommand is controlled
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = os.Environ()
+
+		if err := cmd.Run(); err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				os.Exit(exitErr.ExitCode())
+			}
+			fmt.Fprintf(os.Stderr, "Error: failed to execute %s: %v\n", subcommand, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	} else if len(args) > 0 && args[0] == "query" {
+		// Dispatch to gismo-query binary
+		subcommand := "gismo-query"
+
+		// Try to find the subcommand in the same directory as the main binary
+		execPath, err := os.Executable()
+		if err == nil {
+			dir := filepath.Dir(execPath)
+			localSubcommand := filepath.Join(dir, subcommand)
+			if _, err := os.Stat(localSubcommand); err == nil {
+				subcommand = localSubcommand
+			}
+		}
+
+		// Build arguments for query command
+		var queryArgs []string
+
+		// Add debug flag if it was provided
+		if *debug {
+			queryArgs = append(queryArgs, "--debug")
+		}
+
+		// Add timeout flag if it was provided
+		if *timeout != 60*time.Second {
+			queryArgs = append(queryArgs, "--timeout", timeout.String())
+		}
+
+		// Add SQL query and its arguments
+		queryArgs = append(queryArgs, args[1:]...)
+
+		cmd := exec.Command(subcommand, queryArgs...) // #nosec G204 - subcommand is controlled
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
