@@ -98,4 +98,3 @@ func (c *Client) GetContents(ctx context.Context, ids []string) (*ContentsRespon
 
 	return &contentsResp, nil
 }
-

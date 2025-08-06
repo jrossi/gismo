@@ -88,9 +88,9 @@ type GolangConfig struct {
 
 // ExaConfig holds configuration for Exa.ai integration
 type ExaConfig struct {
-	Enabled bool           `json:"enabled"`
-	APIKey  string         `json:"apiKey,omitempty"` // Can use ${EXA_API_KEY} env var
-	Cache   *ExaCacheConfig `json:"cache,omitempty"`
+	Enabled bool               `json:"enabled"`
+	APIKey  string             `json:"apiKey,omitempty"` // Can use ${EXA_API_KEY} env var
+	Cache   *ExaCacheConfig    `json:"cache,omitempty"`
 	Search  *ExaSearchDefaults `json:"searchDefaults,omitempty"`
 }
 

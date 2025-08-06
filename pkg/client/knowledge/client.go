@@ -229,17 +229,22 @@ func (c *Client) ExecuteQueryStream(ctx context.Context, sql string, handler fun
 // ExaSearch performs an Exa.ai search with caching
 func (c *Client) ExaSearch(ctx context.Context, query string, options *ExaSearchOptions) (*gismov1.ExaSearchResponse, error) {
 	projCtx := getProjectContext()
-	
+
 	req := &gismov1.ExaSearchRequest{
 		Context:             projCtx,
 		Query:               query,
 		UseCache:            true,
 		SimilarityThreshold: 0.8,
 	}
-	
+
 	if options != nil {
+		// Safe conversion with bounds check
+		numResults := options.NumResults
+		if numResults > 2147483647 {
+			numResults = 2147483647
+		}
 		req.Options = &gismov1.ExaSearchOptions{
-			NumResults:         int32(options.NumResults),
+			NumResults:         int32(numResults), // #nosec G115 - bounded above
 			SearchType:         options.SearchType,
 			UseAutoprompt:      options.UseAutoprompt,
 			IncludeDomains:     options.IncludeDomains,
@@ -255,14 +260,14 @@ func (c *Client) ExaSearch(ctx context.Context, query string, options *ExaSearch
 			req.SimilarityThreshold = options.SimilarityThreshold
 		}
 	}
-	
+
 	return c.client.ExaSearch(ctx, req)
 }
 
 // ProvideFeedback provides feedback on search usefulness
 func (c *Client) ProvideFeedback(ctx context.Context, searchID string, score float32, usefulURLs []string) (*gismov1.SearchFeedbackResponse, error) {
 	projCtx := getProjectContext()
-	
+
 	req := &gismov1.SearchFeedbackRequest{
 		Context:         projCtx,
 		SearchId:        searchID,
@@ -270,20 +275,29 @@ func (c *Client) ProvideFeedback(ctx context.Context, searchID string, score flo
 		UsefulUrls:      usefulURLs,
 		FeedbackType:    "explicit",
 	}
-	
+
 	return c.client.ProvideFeedback(ctx, req)
 }
 
 // GetCachedSearches retrieves cached searches for the current project
 func (c *Client) GetCachedSearches(ctx context.Context, limit int, queryFilter string) (*gismov1.GetCachedSearchesResponse, error) {
 	projCtx := getProjectContext()
-	
+
+	// Safe conversion with bounds check
+	safeLimit := limit
+	if safeLimit > 2147483647 {
+		safeLimit = 2147483647
+	}
+	if safeLimit < 0 {
+		safeLimit = 0
+	}
+
 	req := &gismov1.GetCachedSearchesRequest{
 		Context:     projCtx,
-		Limit:       int32(limit),
+		Limit:       int32(safeLimit), // #nosec G115 - bounded above
 		QueryFilter: queryFilter,
 	}
-	
+
 	return c.client.GetCachedSearches(ctx, req)
 }
 

@@ -500,12 +500,14 @@ func (h *KnowledgeHandler) ExecuteQuery(ctx context.Context, req *gismov1.QueryR
 		// Convert to structpb
 		row := make(map[string]interface{})
 		for i, col := range columns {
-			row[col] = values[i]
+			row[col] = convertValueForProtobuf(values[i])
 		}
 
 		rowStruct, err := structpb.NewStruct(row)
 		if err != nil {
-			continue // Skip rows that can't be converted
+			// Log the error for debugging but continue
+			log.Printf("Warning: failed to convert row to structpb: %v", err)
+			continue
 		}
 		results = append(results, rowStruct)
 		resultCount++
@@ -587,12 +589,14 @@ func (h *KnowledgeHandler) ExecuteQueryStream(req *gismov1.QueryRequest, stream 
 		// Convert to structpb
 		row := make(map[string]interface{})
 		for i, col := range columns {
-			row[col] = values[i]
+			row[col] = convertValueForProtobuf(values[i])
 		}
 
 		rowStruct, err := structpb.NewStruct(row)
 		if err != nil {
-			continue // Skip rows that can't be converted
+			// Log the error for debugging but continue
+			log.Printf("Warning: failed to convert row to structpb: %v", err)
+			continue
 		}
 
 		err = stream.Send(&gismov1.QueryResult{
@@ -867,6 +871,58 @@ func convertExaResultsToProto(results []exa.SearchResult) []*gismov1.ExaResult {
 		pbResults = append(pbResults, pbResult)
 	}
 	return pbResults
+}
+
+// convertValueForProtobuf converts database values to types that can be stored in structpb
+func convertValueForProtobuf(v interface{}) interface{} {
+	if v == nil {
+		return nil
+	}
+
+	switch val := v.(type) {
+	case time.Time:
+		// Convert time.Time to RFC3339 string
+		return val.Format(time.RFC3339)
+	case *time.Time:
+		if val != nil {
+			return val.Format(time.RFC3339)
+		}
+		return nil
+	case []byte:
+		// Convert byte arrays to string
+		return string(val)
+	case []interface{}:
+		// Handle arrays by converting each element
+		result := make([]interface{}, len(val))
+		for i, elem := range val {
+			result[i] = convertValueForProtobuf(elem)
+		}
+		return result
+	case map[string]interface{}:
+		// Handle nested maps
+		result := make(map[string]interface{})
+		for k, v := range val {
+			result[k] = convertValueForProtobuf(v)
+		}
+		return result
+	case []float64:
+		// Convert float arrays to interface arrays
+		result := make([]interface{}, len(val))
+		for i, f := range val {
+			result[i] = f
+		}
+		return result
+	case []float32:
+		// Convert float32 arrays to interface arrays
+		result := make([]interface{}, len(val))
+		for i, f := range val {
+			result[i] = float64(f)
+		}
+		return result
+	default:
+		// Return as-is for primitive types
+		return v
+	}
 }
 
 func timeMilliseconds(ms int32) time.Duration {

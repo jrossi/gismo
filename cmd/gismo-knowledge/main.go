@@ -842,14 +842,14 @@ Examples:
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "ID\tQUERY\tTYPE\tRESULTS\tACCESSED\tUSEFULNESS\tTTL")
-	
+
 	for _, search := range response.Searches {
 		accessed := search.LastAccessed.AsTime().Format("2006-01-02 15:04")
 		usefulness := "-"
 		if search.AverageUsefulness > 0 {
 			usefulness = fmt.Sprintf("%.2f", search.AverageUsefulness)
 		}
-		
+
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%s\t%dd\n",
 			search.Id[:8], // Show first 8 chars of ID
 			truncate(search.Query, 30),

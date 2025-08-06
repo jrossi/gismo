@@ -83,4 +83,3 @@ type Feedback struct {
 	UsefulURLs      []string
 	CreatedAt       time.Time
 }
-

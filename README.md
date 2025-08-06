@@ -61,6 +61,7 @@ and comprehensive protection across all Claude Code interaction points. Optimize
 - **Well Tested**: Comprehensive test coverage and benchmarks
 - **Knowledge Management**: Import and search docsets, documentation, and code knowledge
 - **SQL Query Interface**: Direct SQL access to knowledge database for advanced queries
+- **Exa.ai Integration**: Semantic web search with intelligent caching and feedback-driven TTL
 
 ## Project Structure
 
