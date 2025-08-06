@@ -226,6 +226,81 @@ func (c *Client) ExecuteQueryStream(ctx context.Context, sql string, handler fun
 	return nil
 }
 
+// ExaSearch performs an Exa.ai search with caching
+func (c *Client) ExaSearch(ctx context.Context, query string, options *ExaSearchOptions) (*gismov1.ExaSearchResponse, error) {
+	projCtx := getProjectContext()
+	
+	req := &gismov1.ExaSearchRequest{
+		Context:             projCtx,
+		Query:               query,
+		UseCache:            true,
+		SimilarityThreshold: 0.8,
+	}
+	
+	if options != nil {
+		req.Options = &gismov1.ExaSearchOptions{
+			NumResults:         int32(options.NumResults),
+			SearchType:         options.SearchType,
+			UseAutoprompt:      options.UseAutoprompt,
+			IncludeDomains:     options.IncludeDomains,
+			ExcludeDomains:     options.ExcludeDomains,
+			StartPublishedDate: options.StartPublishedDate,
+			EndPublishedDate:   options.EndPublishedDate,
+			Category:           options.Category,
+		}
+		if options.UseCache != nil {
+			req.UseCache = *options.UseCache
+		}
+		if options.SimilarityThreshold > 0 {
+			req.SimilarityThreshold = options.SimilarityThreshold
+		}
+	}
+	
+	return c.client.ExaSearch(ctx, req)
+}
+
+// ProvideFeedback provides feedback on search usefulness
+func (c *Client) ProvideFeedback(ctx context.Context, searchID string, score float32, usefulURLs []string) (*gismov1.SearchFeedbackResponse, error) {
+	projCtx := getProjectContext()
+	
+	req := &gismov1.SearchFeedbackRequest{
+		Context:         projCtx,
+		SearchId:        searchID,
+		UsefulnessScore: score,
+		UsefulUrls:      usefulURLs,
+		FeedbackType:    "explicit",
+	}
+	
+	return c.client.ProvideFeedback(ctx, req)
+}
+
+// GetCachedSearches retrieves cached searches for the current project
+func (c *Client) GetCachedSearches(ctx context.Context, limit int, queryFilter string) (*gismov1.GetCachedSearchesResponse, error) {
+	projCtx := getProjectContext()
+	
+	req := &gismov1.GetCachedSearchesRequest{
+		Context:     projCtx,
+		Limit:       int32(limit),
+		QueryFilter: queryFilter,
+	}
+	
+	return c.client.GetCachedSearches(ctx, req)
+}
+
+// ExaSearchOptions contains options for Exa search
+type ExaSearchOptions struct {
+	NumResults          int
+	SearchType          string // "neural", "keyword", "auto"
+	UseAutoprompt       bool
+	IncludeDomains      []string
+	ExcludeDomains      []string
+	StartPublishedDate  string
+	EndPublishedDate    string
+	Category            string
+	UseCache            *bool
+	SimilarityThreshold float32
+}
+
 // SearchOptions contains options for search queries
 type SearchOptions struct {
 	Type      SearchType

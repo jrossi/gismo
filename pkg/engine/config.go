@@ -21,6 +21,9 @@ type AppConfig struct {
 
 	// Registry configuration
 	Registry *RegistryConfig `json:"registry,omitempty"`
+
+	// Exa.ai search integration
+	Exa *ExaConfig `json:"exa,omitempty"`
 }
 
 // ParallelConfig controls parallel execution settings
@@ -81,6 +84,30 @@ type GolangConfig struct {
 	GolangciConfig *string   `json:"golangciConfig,omitempty"` // path to golangci.yml
 	DisabledChecks []string  `json:"disabledChecks,omitempty"`
 	TestTimeout    *Duration `json:"testTimeout,omitempty"`
+}
+
+// ExaConfig holds configuration for Exa.ai integration
+type ExaConfig struct {
+	Enabled bool           `json:"enabled"`
+	APIKey  string         `json:"apiKey,omitempty"` // Can use ${EXA_API_KEY} env var
+	Cache   *ExaCacheConfig `json:"cache,omitempty"`
+	Search  *ExaSearchDefaults `json:"searchDefaults,omitempty"`
+}
+
+// ExaCacheConfig controls Exa search caching behavior
+type ExaCacheConfig struct {
+	Enabled        bool    `json:"enabled"`
+	MaxSizeGB      float64 `json:"maxSizeGB,omitempty"`
+	DefaultTTLDays int     `json:"defaultTTLDays,omitempty"`
+	MaxTTLDays     int     `json:"maxTTLDays,omitempty"`
+	EvictionPolicy string  `json:"evictionPolicy,omitempty"` // "lru", "lru_with_feedback"
+}
+
+// ExaSearchDefaults provides default search options
+type ExaSearchDefaults struct {
+	NumResults    int    `json:"numResults,omitempty"`
+	UseAutoprompt bool   `json:"useAutoprompt,omitempty"`
+	SearchType    string `json:"searchType,omitempty"` // "neural", "keyword", "auto"
 }
 
 // RegistryConfig holds all registry and package configuration
@@ -206,6 +233,15 @@ func (c *AppConfig) Merge(other *AppConfig) {
 
 	// Append rules (don't merge, later rules take precedence)
 	c.Rules = append(c.Rules, other.Rules...)
+
+	// Merge Exa config
+	if other.Exa != nil {
+		if c.Exa == nil {
+			c.Exa = &ExaConfig{}
+		}
+		// Simple replacement for now - could be more sophisticated
+		*c.Exa = *other.Exa
+	}
 
 	// Merge registry config
 	if other.Registry != nil {

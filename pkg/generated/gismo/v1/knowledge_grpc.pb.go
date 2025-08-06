@@ -24,6 +24,9 @@ const (
 	KnowledgeService_RemoveDocset_FullMethodName       = "/gismo.v1.KnowledgeService/RemoveDocset"
 	KnowledgeService_Search_FullMethodName             = "/gismo.v1.KnowledgeService/Search"
 	KnowledgeService_GetContent_FullMethodName         = "/gismo.v1.KnowledgeService/GetContent"
+	KnowledgeService_ExaSearch_FullMethodName          = "/gismo.v1.KnowledgeService/ExaSearch"
+	KnowledgeService_ProvideFeedback_FullMethodName    = "/gismo.v1.KnowledgeService/ProvideFeedback"
+	KnowledgeService_GetCachedSearches_FullMethodName  = "/gismo.v1.KnowledgeService/GetCachedSearches"
 	KnowledgeService_ExecuteQuery_FullMethodName       = "/gismo.v1.KnowledgeService/ExecuteQuery"
 	KnowledgeService_ExecuteQueryStream_FullMethodName = "/gismo.v1.KnowledgeService/ExecuteQueryStream"
 )
@@ -39,6 +42,10 @@ type KnowledgeServiceClient interface {
 	// Search operations
 	Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
 	GetContent(ctx context.Context, in *GetContentRequest, opts ...grpc.CallOption) (*GetContentResponse, error)
+	// Exa.ai search integration
+	ExaSearch(ctx context.Context, in *ExaSearchRequest, opts ...grpc.CallOption) (*ExaSearchResponse, error)
+	ProvideFeedback(ctx context.Context, in *SearchFeedbackRequest, opts ...grpc.CallOption) (*SearchFeedbackResponse, error)
+	GetCachedSearches(ctx context.Context, in *GetCachedSearchesRequest, opts ...grpc.CallOption) (*GetCachedSearchesResponse, error)
 	// Raw SQL access
 	ExecuteQuery(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error)
 	ExecuteQueryStream(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[QueryResult], error)
@@ -111,6 +118,36 @@ func (c *knowledgeServiceClient) GetContent(ctx context.Context, in *GetContentR
 	return out, nil
 }
 
+func (c *knowledgeServiceClient) ExaSearch(ctx context.Context, in *ExaSearchRequest, opts ...grpc.CallOption) (*ExaSearchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExaSearchResponse)
+	err := c.cc.Invoke(ctx, KnowledgeService_ExaSearch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *knowledgeServiceClient) ProvideFeedback(ctx context.Context, in *SearchFeedbackRequest, opts ...grpc.CallOption) (*SearchFeedbackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchFeedbackResponse)
+	err := c.cc.Invoke(ctx, KnowledgeService_ProvideFeedback_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *knowledgeServiceClient) GetCachedSearches(ctx context.Context, in *GetCachedSearchesRequest, opts ...grpc.CallOption) (*GetCachedSearchesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCachedSearchesResponse)
+	err := c.cc.Invoke(ctx, KnowledgeService_GetCachedSearches_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *knowledgeServiceClient) ExecuteQuery(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(QueryResponse)
@@ -151,6 +188,10 @@ type KnowledgeServiceServer interface {
 	// Search operations
 	Search(context.Context, *SearchRequest) (*SearchResponse, error)
 	GetContent(context.Context, *GetContentRequest) (*GetContentResponse, error)
+	// Exa.ai search integration
+	ExaSearch(context.Context, *ExaSearchRequest) (*ExaSearchResponse, error)
+	ProvideFeedback(context.Context, *SearchFeedbackRequest) (*SearchFeedbackResponse, error)
+	GetCachedSearches(context.Context, *GetCachedSearchesRequest) (*GetCachedSearchesResponse, error)
 	// Raw SQL access
 	ExecuteQuery(context.Context, *QueryRequest) (*QueryResponse, error)
 	ExecuteQueryStream(*QueryRequest, grpc.ServerStreamingServer[QueryResult]) error
@@ -178,6 +219,15 @@ func (UnimplementedKnowledgeServiceServer) Search(context.Context, *SearchReques
 }
 func (UnimplementedKnowledgeServiceServer) GetContent(context.Context, *GetContentRequest) (*GetContentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContent not implemented")
+}
+func (UnimplementedKnowledgeServiceServer) ExaSearch(context.Context, *ExaSearchRequest) (*ExaSearchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExaSearch not implemented")
+}
+func (UnimplementedKnowledgeServiceServer) ProvideFeedback(context.Context, *SearchFeedbackRequest) (*SearchFeedbackResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProvideFeedback not implemented")
+}
+func (UnimplementedKnowledgeServiceServer) GetCachedSearches(context.Context, *GetCachedSearchesRequest) (*GetCachedSearchesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCachedSearches not implemented")
 }
 func (UnimplementedKnowledgeServiceServer) ExecuteQuery(context.Context, *QueryRequest) (*QueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteQuery not implemented")
@@ -289,6 +339,60 @@ func _KnowledgeService_GetContent_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KnowledgeService_ExaSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExaSearchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KnowledgeServiceServer).ExaSearch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KnowledgeService_ExaSearch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KnowledgeServiceServer).ExaSearch(ctx, req.(*ExaSearchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KnowledgeService_ProvideFeedback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchFeedbackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KnowledgeServiceServer).ProvideFeedback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KnowledgeService_ProvideFeedback_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KnowledgeServiceServer).ProvideFeedback(ctx, req.(*SearchFeedbackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KnowledgeService_GetCachedSearches_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCachedSearchesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KnowledgeServiceServer).GetCachedSearches(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KnowledgeService_GetCachedSearches_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KnowledgeServiceServer).GetCachedSearches(ctx, req.(*GetCachedSearchesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _KnowledgeService_ExecuteQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryRequest)
 	if err := dec(in); err != nil {
@@ -340,6 +444,18 @@ var KnowledgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContent",
 			Handler:    _KnowledgeService_GetContent_Handler,
+		},
+		{
+			MethodName: "ExaSearch",
+			Handler:    _KnowledgeService_ExaSearch_Handler,
+		},
+		{
+			MethodName: "ProvideFeedback",
+			Handler:    _KnowledgeService_ProvideFeedback_Handler,
+		},
+		{
+			MethodName: "GetCachedSearches",
+			Handler:    _KnowledgeService_GetCachedSearches_Handler,
 		},
 		{
 			MethodName: "ExecuteQuery",

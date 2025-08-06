@@ -4,6 +4,17 @@ This is a Go project implementing an extensible Claude Code hooks system with se
 comprehensive linting capabilities, and intelligent knowledge management using DuckDB for cross-platform code
 search and documentation.
 
+## ⚠️ CRITICAL: Never Commit Build Artifacts
+
+**NEVER commit anything from the `build/` directory!** This includes:
+- Binary executables (`build/bin/*`)
+- Coverage reports (`build/coverage/*`)
+- Distribution files (`build/dist/*`)
+- Any other build artifacts
+
+The `build/` directory is in `.gitignore` and MUST remain excluded from version control.
+**Always check `git status` before committing to ensure no binaries are included.**
+
 ## Project Structure
 
 ```text

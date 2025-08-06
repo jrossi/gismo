@@ -29,6 +29,7 @@ coverage.out
 # Go build cache
 /vendor/
 /bin/
+/build/
 
 # OS files
 .DS_Store

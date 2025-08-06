@@ -38,6 +38,12 @@ func main() {
 		err = indexCommand(os.Args[2:])
 	case "stats":
 		err = statsCommand(os.Args[2:])
+	case "exa":
+		err = exaCommand(os.Args[2:])
+	case "exa-cached":
+		err = exaCachedCommand(os.Args[2:])
+	case "exa-feedback":
+		err = exaFeedbackCommand(os.Args[2:])
 	case "version", "--version", "-v":
 		fmt.Println("gismo-knowledge", version)
 		os.Exit(0)
@@ -71,6 +77,9 @@ Commands:
   push      Push files or content to knowledge base
   index     Manage search indexes
   stats     Show knowledge base statistics
+  exa       Search the web using Exa.ai
+  exa-cached    View cached Exa searches
+  exa-feedback  Provide feedback on search usefulness
   version   Show version information
   help      Show this help message
 
@@ -670,4 +679,276 @@ func indent(text string, prefix string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func exaCommand(args []string) error {
+	fs := flag.NewFlagSet("exa", flag.ExitOnError)
+	numResults := fs.Int("n", 10, "Number of results")
+	searchType := fs.String("type", "neural", "Search type: neural, keyword, auto")
+	useCache := fs.Bool("cache", true, "Use cached results if available")
+	threshold := fs.Float64("threshold", 0.8, "Similarity threshold for cache matching")
+	verbose := fs.Bool("v", false, "Verbose output")
+
+	fs.Usage = func() {
+		fmt.Print(`Search the web using Exa.ai
+
+Usage:
+  gismo-knowledge exa [options] <query>
+
+Options:
+`)
+		fs.PrintDefaults()
+		fmt.Print(`
+Examples:
+  # Simple web search
+  gismo-knowledge exa "golang error handling best practices"
+
+  # Search without cache
+  gismo-knowledge exa --cache=false "latest AI developments"
+
+  # Get more results
+  gismo-knowledge exa -n 20 "distributed systems"
+
+  # Keyword search instead of neural
+  gismo-knowledge exa --type keyword "RFC 2616"
+
+Note: Requires EXA_API_KEY environment variable to be set.
+`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if len(fs.Args()) == 0 {
+		fs.Usage()
+		return fmt.Errorf("search query required")
+	}
+
+	query := strings.Join(fs.Args(), " ")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	client, err := knowledge.New()
+	if err != nil {
+		return fmt.Errorf("failed to create client: %w", err)
+	}
+	defer client.Close()
+
+	// Create search options
+	exaOpts := &knowledge.ExaSearchOptions{
+		NumResults:          *numResults,
+		SearchType:          *searchType,
+		UseCache:            useCache,
+		SimilarityThreshold: float32(*threshold),
+	}
+
+	// Perform search
+	response, err := client.ExaSearch(ctx, query, exaOpts)
+	if err != nil {
+		return fmt.Errorf("search failed: %w", err)
+	}
+
+	// Display results
+	if response.FromCache {
+		fmt.Printf("📦 Results from cache (similarity: %.2f)\n\n", response.CacheSimilarity)
+	} else {
+		fmt.Printf("🔍 Fresh search results (took %dms)\n\n", response.ExecutionTimeMs)
+	}
+
+	if len(response.Results) == 0 {
+		fmt.Println("No results found")
+		return nil
+	}
+
+	for i, result := range response.Results {
+		fmt.Printf("%d. %s\n", i+1, result.Title)
+		fmt.Printf("   URL: %s\n", result.Url)
+		if result.PublishedDate != "" {
+			fmt.Printf("   Date: %s\n", result.PublishedDate)
+		}
+		if result.Author != "" {
+			fmt.Printf("   Author: %s\n", result.Author)
+		}
+		if result.Score > 0 {
+			fmt.Printf("   Score: %.3f\n", result.Score)
+		}
+		if *verbose && result.Snippet != "" {
+			fmt.Printf("   Snippet:\n%s\n", indent(result.Snippet, "     "))
+		}
+		fmt.Println()
+	}
+
+	if response.SearchId != "" {
+		fmt.Printf("Search ID: %s (use with exa-feedback command)\n", response.SearchId)
+	}
+
+	return nil
+}
+
+func exaCachedCommand(args []string) error {
+	fs := flag.NewFlagSet("exa-cached", flag.ExitOnError)
+	limit := fs.Int("limit", 10, "Maximum number of cached searches to show")
+	filter := fs.String("filter", "", "Filter by query text")
+
+	fs.Usage = func() {
+		fmt.Print(`View cached Exa searches
+
+Usage:
+  gismo-knowledge exa-cached [options]
+
+Options:
+`)
+		fs.PrintDefaults()
+		fmt.Print(`
+Examples:
+  # View recent cached searches
+  gismo-knowledge exa-cached
+
+  # Show more cached searches
+  gismo-knowledge exa-cached --limit 20
+
+  # Filter by query text
+  gismo-knowledge exa-cached --filter "golang"
+`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	client, err := knowledge.New()
+	if err != nil {
+		return fmt.Errorf("failed to create client: %w", err)
+	}
+	defer client.Close()
+
+	// Get cached searches
+	response, err := client.GetCachedSearches(ctx, *limit, *filter)
+	if err != nil {
+		return fmt.Errorf("failed to get cached searches: %w", err)
+	}
+
+	if len(response.Searches) == 0 {
+		fmt.Println("No cached searches found")
+		return nil
+	}
+
+	fmt.Printf("Found %d cached searches:\n\n", response.TotalCount)
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "ID\tQUERY\tTYPE\tRESULTS\tACCESSED\tUSEFULNESS\tTTL")
+	
+	for _, search := range response.Searches {
+		accessed := search.LastAccessed.AsTime().Format("2006-01-02 15:04")
+		usefulness := "-"
+		if search.AverageUsefulness > 0 {
+			usefulness = fmt.Sprintf("%.2f", search.AverageUsefulness)
+		}
+		
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%s\t%dd\n",
+			search.Id[:8], // Show first 8 chars of ID
+			truncate(search.Query, 30),
+			search.SearchType,
+			search.ResultCount,
+			accessed,
+			usefulness,
+			search.TtlDays,
+		)
+	}
+	w.Flush()
+
+	return nil
+}
+
+func exaFeedbackCommand(args []string) error {
+	fs := flag.NewFlagSet("exa-feedback", flag.ExitOnError)
+	score := fs.Float64("score", 0.5, "Usefulness score (0.0 to 1.0)")
+	urls := fs.String("urls", "", "Comma-separated list of useful URLs")
+
+	fs.Usage = func() {
+		fmt.Print(`Provide feedback on search usefulness
+
+Usage:
+  gismo-knowledge exa-feedback [options] <search-id>
+
+Options:
+`)
+		fs.PrintDefaults()
+		fmt.Print(`
+Examples:
+  # Mark search as highly useful
+  gismo-knowledge exa-feedback --score 0.9 abc12345
+
+  # Mark specific URLs as useful
+  gismo-knowledge exa-feedback --score 0.7 --urls "https://example.com,https://docs.com" abc12345
+
+  # Mark as not useful
+  gismo-knowledge exa-feedback --score 0.1 abc12345
+
+Note: Higher scores (>0.7) extend cache TTL up to 30 days.
+`)
+	}
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if len(fs.Args()) == 0 {
+		fs.Usage()
+		return fmt.Errorf("search ID required")
+	}
+
+	searchID := fs.Args()[0]
+
+	// Validate score
+	if *score < 0 || *score > 1 {
+		return fmt.Errorf("score must be between 0.0 and 1.0")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	client, err := knowledge.New()
+	if err != nil {
+		return fmt.Errorf("failed to create client: %w", err)
+	}
+	defer client.Close()
+
+	// Parse useful URLs
+	var usefulURLs []string
+	if *urls != "" {
+		usefulURLs = strings.Split(*urls, ",")
+		for i := range usefulURLs {
+			usefulURLs[i] = strings.TrimSpace(usefulURLs[i])
+		}
+	}
+
+	// Provide feedback
+	response, err := client.ProvideFeedback(ctx, searchID, float32(*score), usefulURLs)
+	if err != nil {
+		return fmt.Errorf("failed to provide feedback: %w", err)
+	}
+
+	if response.Success {
+		fmt.Printf("✓ Feedback recorded: %s\n", response.Message)
+		if response.UpdatedTtlDays > 0 {
+			fmt.Printf("  Cache TTL updated to %d days\n", response.UpdatedTtlDays)
+		}
+	} else {
+		fmt.Printf("✗ Failed to record feedback: %s\n", response.Message)
+	}
+
+	return nil
+}
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max-3] + "..."
 }

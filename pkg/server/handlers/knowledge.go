@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -15,8 +16,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/jrossi/gismo/pkg/docset"
+	"github.com/jrossi/gismo/pkg/external/exa"
 	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
 	"github.com/jrossi/gismo/pkg/knowledge"
+	"github.com/jrossi/gismo/pkg/knowledge/cache"
 )
 
 // KnowledgeHandler implements the KnowledgeService gRPC service
@@ -614,6 +617,258 @@ func (h *KnowledgeHandler) ExecuteQueryStream(req *gismov1.QueryRequest, stream 
 }
 
 // timeMilliseconds converts milliseconds to time.Duration
+// safeIntToInt32 safely converts int to int32 with bounds checking
+func safeIntToInt32(n int) int32 {
+	const maxInt32 = 2147483647
+	if n > maxInt32 {
+		return maxInt32
+	}
+	if n < -maxInt32-1 {
+		return -maxInt32 - 1
+	}
+	return int32(n)
+}
+
+// ExaSearch performs a search using Exa.ai with semantic caching
+func (h *KnowledgeHandler) ExaSearch(ctx context.Context, req *gismov1.ExaSearchRequest) (*gismov1.ExaSearchResponse, error) {
+	if req.Context == nil {
+		return nil, status.Error(codes.InvalidArgument, "project context is required")
+	}
+
+	logProjectContext("ExaSearch", req.Context)
+
+	// Initialize cache manager
+	cacheManager, err := cache.NewExaCacheManager(h.db)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize cache manager: %v", err)
+	}
+
+	// Default similarity threshold
+	similarityThreshold := float32(0.8)
+	if req.SimilarityThreshold > 0 {
+		similarityThreshold = req.SimilarityThreshold
+	}
+
+	// Check cache first if enabled
+	if req.UseCache && cacheManager != nil {
+		cached, err := cacheManager.FindSimilarQuery(ctx, req.Query, req.Context.ProjectName, similarityThreshold)
+		if err != nil {
+			log.Printf("Cache lookup error: %v", err)
+		} else if cached != nil {
+			log.Printf("Cache hit for query: %s", req.Query)
+			return &gismov1.ExaSearchResponse{
+				SearchId:        cached.ID,
+				Results:         convertExaResultsToProto(cached.Results),
+				FromCache:       true,
+				CacheSimilarity: similarityThreshold,
+				ExecutionTimeMs: 0,
+			}, nil
+		}
+	}
+
+	// Get API key from environment
+	apiKey := os.Getenv("EXA_API_KEY")
+	if apiKey == "" {
+		return nil, status.Error(codes.FailedPrecondition, "EXA_API_KEY environment variable not set")
+	}
+
+	// Create Exa client
+	client := exa.NewClient(apiKey)
+
+	// Build search request
+	searchReq := &exa.SearchRequest{
+		Query:      req.Query,
+		NumResults: 10,
+		Type:       "neural",
+		Contents: exa.Contents{
+			Text:    true,
+			Summary: true,
+		},
+	}
+
+	if req.Options != nil {
+		if req.Options.NumResults > 0 {
+			searchReq.NumResults = int(req.Options.NumResults)
+		}
+		if req.Options.SearchType != "" {
+			searchReq.Type = req.Options.SearchType
+		}
+		searchReq.UseAutoprompt = req.Options.UseAutoprompt
+		searchReq.IncludeDomains = req.Options.IncludeDomains
+		searchReq.ExcludeDomains = req.Options.ExcludeDomains
+		searchReq.StartPublishedDate = req.Options.StartPublishedDate
+		searchReq.EndPublishedDate = req.Options.EndPublishedDate
+		searchReq.Category = req.Options.Category
+	}
+
+	// Execute search
+	start := time.Now()
+	searchResp, err := client.Search(ctx, searchReq)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Exa search failed: %v", err)
+	}
+	execTime := time.Since(start).Milliseconds()
+
+	// Store in cache
+	if cacheManager != nil {
+		searchType := "neural"
+		if req.Options != nil && req.Options.SearchType != "" {
+			searchType = req.Options.SearchType
+		}
+		err = cacheManager.StoreSearch(ctx, req.Query, searchType, searchResp.Results, req.Context.ProjectName)
+		if err != nil {
+			log.Printf("Failed to cache search results: %v", err)
+		}
+	}
+
+	// Get the search ID from cache (it was just stored)
+	searchID := ""
+	if cacheManager != nil {
+		cached, _ := cacheManager.FindSimilarQuery(ctx, req.Query, req.Context.ProjectName, 0.99)
+		if cached != nil {
+			searchID = cached.ID
+		}
+	}
+
+	return &gismov1.ExaSearchResponse{
+		SearchId:         searchID,
+		Results:          convertExaResultsToProto(searchResp.Results),
+		FromCache:        false,
+		CacheSimilarity:  0,
+		ExecutionTimeMs:  execTime,
+		AutopromptString: searchResp.AutoPrompt,
+	}, nil
+}
+
+// ProvideFeedback records feedback about search usefulness
+func (h *KnowledgeHandler) ProvideFeedback(ctx context.Context, req *gismov1.SearchFeedbackRequest) (*gismov1.SearchFeedbackResponse, error) {
+	if req.Context == nil {
+		return nil, status.Error(codes.InvalidArgument, "project context is required")
+	}
+
+	logProjectContext("ProvideFeedback", req.Context)
+
+	// Initialize cache manager
+	cacheManager, err := cache.NewExaCacheManager(h.db)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to initialize cache manager: %v", err)
+	}
+
+	// Store feedback
+	feedbackType := "explicit"
+	if req.FeedbackType != "" {
+		feedbackType = req.FeedbackType
+	}
+
+	err = cacheManager.ProvideFeedback(ctx, req.SearchId, req.UsefulnessScore, feedbackType)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to store feedback: %v", err)
+	}
+
+	// Get updated TTL
+	var updatedTTL int32
+	query := `SELECT ttl_days FROM exa_search_cache WHERE id = $1`
+	err = h.db.QueryRowContext(ctx, query, req.SearchId).Scan(&updatedTTL)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Failed to get updated TTL: %v", err)
+	}
+
+	return &gismov1.SearchFeedbackResponse{
+		Success:        true,
+		Message:        fmt.Sprintf("Feedback recorded for search %s", req.SearchId),
+		UpdatedTtlDays: updatedTTL,
+	}, nil
+}
+
+// GetCachedSearches retrieves recent cached searches
+func (h *KnowledgeHandler) GetCachedSearches(ctx context.Context, req *gismov1.GetCachedSearchesRequest) (*gismov1.GetCachedSearchesResponse, error) {
+	if req.Context == nil {
+		return nil, status.Error(codes.InvalidArgument, "project context is required")
+	}
+
+	logProjectContext("GetCachedSearches", req.Context)
+
+	// Initialize cache manager
+	cacheManager, err := cache.NewExaCacheManager(h.db)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to initialize cache manager: %v", err)
+	}
+
+	// Default limit
+	limit := 10
+	if req.Limit > 0 {
+		limit = int(req.Limit)
+	}
+
+	// Get cached searches
+	searches, err := cacheManager.GetCachedSearches(ctx, req.Context.ProjectName, limit)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get cached searches: %v", err)
+	}
+
+	// Convert to proto
+	pbSearches := make([]*gismov1.CachedSearch, 0, len(searches))
+	for _, search := range searches {
+		// Calculate average usefulness
+		var avgUsefulness float32
+		query := `SELECT AVG(usefulness_score) FROM exa_feedback WHERE search_id = $1`
+		_ = h.db.QueryRowContext(ctx, query, search.ID).Scan(&avgUsefulness)
+
+		// Safe int to int32 conversions with bounds checking
+		accessCount := safeIntToInt32(search.AccessCount)
+		ttlDays := safeIntToInt32(search.TTLDays)
+		resultCount := safeIntToInt32(len(search.Results))
+
+		pbSearch := &gismov1.CachedSearch{
+			Id:                search.ID,
+			Query:             search.Query,
+			SearchType:        search.SearchType,
+			CreatedAt:         timestamppb.New(search.CreatedAt),
+			LastAccessed:      timestamppb.New(search.LastAccessed),
+			AccessCount:       accessCount,
+			TtlDays:           ttlDays,
+			ResultCount:       resultCount,
+			AverageUsefulness: avgUsefulness,
+		}
+
+		// Apply query filter if provided
+		if req.QueryFilter != "" {
+			// Simple substring match
+			if !strings.Contains(strings.ToLower(search.Query), strings.ToLower(req.QueryFilter)) {
+				continue
+			}
+		}
+
+		pbSearches = append(pbSearches, pbSearch)
+	}
+
+	return &gismov1.GetCachedSearchesResponse{
+		Searches:   pbSearches,
+		TotalCount: safeIntToInt32(len(pbSearches)),
+	}, nil
+}
+
+// convertExaResultsToProto converts Exa search results to proto format
+func convertExaResultsToProto(results []exa.SearchResult) []*gismov1.ExaResult {
+	pbResults := make([]*gismov1.ExaResult, 0, len(results))
+	for _, result := range results {
+		pbResult := &gismov1.ExaResult{
+			Id:            result.ID,
+			Url:           result.URL,
+			Title:         result.Title,
+			Snippet:       result.Summary,
+			Text:          result.Text,
+			PublishedDate: result.PublishedDate,
+			Author:        result.Author,
+			Score:         float32(result.Score),
+			Highlights:    result.Highlights,
+			Metadata:      make(map[string]string),
+		}
+		pbResults = append(pbResults, pbResult)
+	}
+	return pbResults
+}
+
 func timeMilliseconds(ms int32) time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }

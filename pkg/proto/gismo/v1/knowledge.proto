@@ -17,6 +17,11 @@ service KnowledgeService {
   rpc Search(SearchRequest) returns (SearchResponse);
   rpc GetContent(GetContentRequest) returns (GetContentResponse);
 
+  // Exa.ai search integration
+  rpc ExaSearch(ExaSearchRequest) returns (ExaSearchResponse);
+  rpc ProvideFeedback(SearchFeedbackRequest) returns (SearchFeedbackResponse);
+  rpc GetCachedSearches(GetCachedSearchesRequest) returns (GetCachedSearchesResponse);
+
   // Raw SQL access
   rpc ExecuteQuery(QueryRequest) returns (QueryResponse);
   rpc ExecuteQueryStream(QueryRequest) returns (stream QueryResult);
@@ -191,4 +196,93 @@ message QueryMetadata {
 message QueryComplete {
   int32 total_rows = 1;
   int64 execution_time_ms = 2;
+}
+
+// Exa.ai search integration messages
+
+// Exa search request
+message ExaSearchRequest {
+  ProjectContext context = 1;
+  string query = 2;
+  ExaSearchOptions options = 3;
+  bool use_cache = 4;  // Default true
+  float similarity_threshold = 5;  // For cache matching (default 0.8)
+}
+
+// Exa search options
+message ExaSearchOptions {
+  int32 num_results = 1;
+  string search_type = 2;  // "neural", "keyword", "auto"
+  bool use_autoprompt = 3;
+  repeated string include_domains = 4;
+  repeated string exclude_domains = 5;
+  string start_published_date = 6;
+  string end_published_date = 7;
+  string category = 8;
+}
+
+// Exa search response
+message ExaSearchResponse {
+  string search_id = 1;
+  repeated ExaResult results = 2;
+  bool from_cache = 3;
+  float cache_similarity = 4;
+  int64 execution_time_ms = 5;
+  string autoprompt_string = 6;
+}
+
+// Individual Exa search result
+message ExaResult {
+  string id = 1;
+  string url = 2;
+  string title = 3;
+  string snippet = 4;
+  string text = 5;
+  string published_date = 6;
+  string author = 7;
+  float score = 8;
+  repeated string highlights = 9;
+  map<string, string> metadata = 10;
+}
+
+// Search feedback request
+message SearchFeedbackRequest {
+  ProjectContext context = 1;
+  string search_id = 2;
+  float usefulness_score = 3;  // 0.0 to 1.0
+  repeated string useful_urls = 4;
+  string feedback_type = 5;  // "implicit" or "explicit"
+}
+
+// Search feedback response
+message SearchFeedbackResponse {
+  bool success = 1;
+  string message = 2;
+  int32 updated_ttl_days = 3;
+}
+
+// Get cached searches request
+message GetCachedSearchesRequest {
+  ProjectContext context = 1;
+  int32 limit = 2;  // Default 10
+  string query_filter = 3;  // Optional filter by query text
+}
+
+// Get cached searches response
+message GetCachedSearchesResponse {
+  repeated CachedSearch searches = 1;
+  int32 total_count = 2;
+}
+
+// Cached search info
+message CachedSearch {
+  string id = 1;
+  string query = 2;
+  string search_type = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp last_accessed = 5;
+  int32 access_count = 6;
+  int32 ttl_days = 7;
+  int32 result_count = 8;
+  float average_usefulness = 9;
 }
