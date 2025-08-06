@@ -2231,6 +2231,752 @@ func (x *CachedSearch) GetAverageUsefulness() float32 {
 	return 0
 }
 
+// Create research task request
+type CreateResearchTaskRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *ProjectContext        `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Instructions  string                 `protobuf:"bytes,2,opt,name=instructions,proto3" json:"instructions,omitempty"`                                                                   // Max 4096 characters
+	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`                                                                                 // "exa-research" or "exa-research-pro"
+	OutputSchema  *structpb.Struct       `protobuf:"bytes,4,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`                                               // Optional JSON schema
+	InferSchema   bool                   `protobuf:"varint,5,opt,name=infer_schema,json=inferSchema,proto3" json:"infer_schema,omitempty"`                                                 // Let LLM generate schema
+	UserConsent   bool                   `protobuf:"varint,6,opt,name=user_consent,json=userConsent,proto3" json:"user_consent,omitempty"`                                                 // Required for expensive operations
+	Metadata      map[string]string      `protobuf:"bytes,7,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Additional metadata
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateResearchTaskRequest) Reset() {
+	*x = CreateResearchTaskRequest{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateResearchTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateResearchTaskRequest) ProtoMessage() {}
+
+func (x *CreateResearchTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateResearchTaskRequest.ProtoReflect.Descriptor instead.
+func (*CreateResearchTaskRequest) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *CreateResearchTaskRequest) GetContext() *ProjectContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *CreateResearchTaskRequest) GetInstructions() string {
+	if x != nil {
+		return x.Instructions
+	}
+	return ""
+}
+
+func (x *CreateResearchTaskRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *CreateResearchTaskRequest) GetOutputSchema() *structpb.Struct {
+	if x != nil {
+		return x.OutputSchema
+	}
+	return nil
+}
+
+func (x *CreateResearchTaskRequest) GetInferSchema() bool {
+	if x != nil {
+		return x.InferSchema
+	}
+	return false
+}
+
+func (x *CreateResearchTaskRequest) GetUserConsent() bool {
+	if x != nil {
+		return x.UserConsent
+	}
+	return false
+}
+
+func (x *CreateResearchTaskRequest) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+// Create research task response
+type CreateResearchTaskResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	EstimatedCost float32                `protobuf:"fixed32,3,opt,name=estimated_cost,json=estimatedCost,proto3" json:"estimated_cost,omitempty"`
+	Warning       string                 `protobuf:"bytes,4,opt,name=warning,proto3" json:"warning,omitempty"` // Cost warning if applicable
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateResearchTaskResponse) Reset() {
+	*x = CreateResearchTaskResponse{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateResearchTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateResearchTaskResponse) ProtoMessage() {}
+
+func (x *CreateResearchTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateResearchTaskResponse.ProtoReflect.Descriptor instead.
+func (*CreateResearchTaskResponse) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *CreateResearchTaskResponse) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *CreateResearchTaskResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *CreateResearchTaskResponse) GetEstimatedCost() float32 {
+	if x != nil {
+		return x.EstimatedCost
+	}
+	return 0
+}
+
+func (x *CreateResearchTaskResponse) GetWarning() string {
+	if x != nil {
+		return x.Warning
+	}
+	return ""
+}
+
+// Get research task status request
+type GetResearchTaskStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *ProjectContext        `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetResearchTaskStatusRequest) Reset() {
+	*x = GetResearchTaskStatusRequest{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetResearchTaskStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetResearchTaskStatusRequest) ProtoMessage() {}
+
+func (x *GetResearchTaskStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetResearchTaskStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetResearchTaskStatusRequest) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GetResearchTaskStatusRequest) GetContext() *ProjectContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *GetResearchTaskStatusRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+// Get research task status response
+type GetResearchTaskStatusResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	TaskId          string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Status          string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // pending, running, polling, completed, failed, canceled
+	ProgressMessage string                 `protobuf:"bytes,3,opt,name=progress_message,json=progressMessage,proto3" json:"progress_message,omitempty"`
+	Result          *structpb.Struct       `protobuf:"bytes,4,opt,name=result,proto3" json:"result,omitempty"` // Structured result when completed
+	Citations       []*ResearchCitation    `protobuf:"bytes,5,rep,name=citations,proto3" json:"citations,omitempty"`
+	Error           string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	EstimatedCost   float32                `protobuf:"fixed32,7,opt,name=estimated_cost,json=estimatedCost,proto3" json:"estimated_cost,omitempty"`
+	ActualCost      float32                `protobuf:"fixed32,8,opt,name=actual_cost,json=actualCost,proto3" json:"actual_cost,omitempty"`
+	ElapsedSeconds  int64                  `protobuf:"varint,9,opt,name=elapsed_seconds,json=elapsedSeconds,proto3" json:"elapsed_seconds,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CompletedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GetResearchTaskStatusResponse) Reset() {
+	*x = GetResearchTaskStatusResponse{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetResearchTaskStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetResearchTaskStatusResponse) ProtoMessage() {}
+
+func (x *GetResearchTaskStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetResearchTaskStatusResponse.ProtoReflect.Descriptor instead.
+func (*GetResearchTaskStatusResponse) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *GetResearchTaskStatusResponse) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *GetResearchTaskStatusResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *GetResearchTaskStatusResponse) GetProgressMessage() string {
+	if x != nil {
+		return x.ProgressMessage
+	}
+	return ""
+}
+
+func (x *GetResearchTaskStatusResponse) GetResult() *structpb.Struct {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *GetResearchTaskStatusResponse) GetCitations() []*ResearchCitation {
+	if x != nil {
+		return x.Citations
+	}
+	return nil
+}
+
+func (x *GetResearchTaskStatusResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *GetResearchTaskStatusResponse) GetEstimatedCost() float32 {
+	if x != nil {
+		return x.EstimatedCost
+	}
+	return 0
+}
+
+func (x *GetResearchTaskStatusResponse) GetActualCost() float32 {
+	if x != nil {
+		return x.ActualCost
+	}
+	return 0
+}
+
+func (x *GetResearchTaskStatusResponse) GetElapsedSeconds() int64 {
+	if x != nil {
+		return x.ElapsedSeconds
+	}
+	return 0
+}
+
+func (x *GetResearchTaskStatusResponse) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *GetResearchTaskStatusResponse) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+// Research citation
+type ResearchCitation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Author        string                 `protobuf:"bytes,3,opt,name=author,proto3" json:"author,omitempty"`
+	PublishedAt   string                 `protobuf:"bytes,4,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	Quotes        []string               `protobuf:"bytes,5,rep,name=quotes,proto3" json:"quotes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResearchCitation) Reset() {
+	*x = ResearchCitation{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResearchCitation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResearchCitation) ProtoMessage() {}
+
+func (x *ResearchCitation) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResearchCitation.ProtoReflect.Descriptor instead.
+func (*ResearchCitation) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ResearchCitation) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *ResearchCitation) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *ResearchCitation) GetAuthor() string {
+	if x != nil {
+		return x.Author
+	}
+	return ""
+}
+
+func (x *ResearchCitation) GetPublishedAt() string {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return ""
+}
+
+func (x *ResearchCitation) GetQuotes() []string {
+	if x != nil {
+		return x.Quotes
+	}
+	return nil
+}
+
+// Cancel research task request
+type CancelResearchTaskRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *ProjectContext        `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelResearchTaskRequest) Reset() {
+	*x = CancelResearchTaskRequest{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelResearchTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelResearchTaskRequest) ProtoMessage() {}
+
+func (x *CancelResearchTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelResearchTaskRequest.ProtoReflect.Descriptor instead.
+func (*CancelResearchTaskRequest) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *CancelResearchTaskRequest) GetContext() *ProjectContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *CancelResearchTaskRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+// Cancel research task response
+type CancelResearchTaskResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelResearchTaskResponse) Reset() {
+	*x = CancelResearchTaskResponse{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelResearchTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelResearchTaskResponse) ProtoMessage() {}
+
+func (x *CancelResearchTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelResearchTaskResponse.ProtoReflect.Descriptor instead.
+func (*CancelResearchTaskResponse) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *CancelResearchTaskResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CancelResearchTaskResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// List active research tasks request
+type ListActiveResearchTasksRequest struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Context            *ProjectContext        `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Limit              int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`                                                       // Default 20
+	IncludeAllProjects bool                   `protobuf:"varint,3,opt,name=include_all_projects,json=includeAllProjects,proto3" json:"include_all_projects,omitempty"` // Show tasks from all projects
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ListActiveResearchTasksRequest) Reset() {
+	*x = ListActiveResearchTasksRequest{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListActiveResearchTasksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListActiveResearchTasksRequest) ProtoMessage() {}
+
+func (x *ListActiveResearchTasksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListActiveResearchTasksRequest.ProtoReflect.Descriptor instead.
+func (*ListActiveResearchTasksRequest) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ListActiveResearchTasksRequest) GetContext() *ProjectContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ListActiveResearchTasksRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListActiveResearchTasksRequest) GetIncludeAllProjects() bool {
+	if x != nil {
+		return x.IncludeAllProjects
+	}
+	return false
+}
+
+// List active research tasks response
+type ListActiveResearchTasksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tasks         []*ResearchTaskSummary `protobuf:"bytes,1,rep,name=tasks,proto3" json:"tasks,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListActiveResearchTasksResponse) Reset() {
+	*x = ListActiveResearchTasksResponse{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListActiveResearchTasksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListActiveResearchTasksResponse) ProtoMessage() {}
+
+func (x *ListActiveResearchTasksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListActiveResearchTasksResponse.ProtoReflect.Descriptor instead.
+func (*ListActiveResearchTasksResponse) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *ListActiveResearchTasksResponse) GetTasks() []*ResearchTaskSummary {
+	if x != nil {
+		return x.Tasks
+	}
+	return nil
+}
+
+func (x *ListActiveResearchTasksResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
+// Research task summary
+type ResearchTaskSummary struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	TaskId          string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Instructions    string                 `protobuf:"bytes,2,opt,name=instructions,proto3" json:"instructions,omitempty"`
+	Model           string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
+	Status          string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	ProgressMessage string                 `protobuf:"bytes,5,opt,name=progress_message,json=progressMessage,proto3" json:"progress_message,omitempty"`
+	EstimatedCost   float32                `protobuf:"fixed32,6,opt,name=estimated_cost,json=estimatedCost,proto3" json:"estimated_cost,omitempty"`
+	ElapsedSeconds  int64                  `protobuf:"varint,7,opt,name=elapsed_seconds,json=elapsedSeconds,proto3" json:"elapsed_seconds,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ProjectContext  string                 `protobuf:"bytes,9,opt,name=project_context,json=projectContext,proto3" json:"project_context,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ResearchTaskSummary) Reset() {
+	*x = ResearchTaskSummary{}
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResearchTaskSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResearchTaskSummary) ProtoMessage() {}
+
+func (x *ResearchTaskSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_gismo_v1_knowledge_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResearchTaskSummary.ProtoReflect.Descriptor instead.
+func (*ResearchTaskSummary) Descriptor() ([]byte, []int) {
+	return file_gismo_v1_knowledge_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *ResearchTaskSummary) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *ResearchTaskSummary) GetInstructions() string {
+	if x != nil {
+		return x.Instructions
+	}
+	return ""
+}
+
+func (x *ResearchTaskSummary) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *ResearchTaskSummary) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ResearchTaskSummary) GetProgressMessage() string {
+	if x != nil {
+		return x.ProgressMessage
+	}
+	return ""
+}
+
+func (x *ResearchTaskSummary) GetEstimatedCost() float32 {
+	if x != nil {
+		return x.EstimatedCost
+	}
+	return 0
+}
+
+func (x *ResearchTaskSummary) GetElapsedSeconds() int64 {
+	if x != nil {
+		return x.ElapsedSeconds
+	}
+	return 0
+}
+
+func (x *ResearchTaskSummary) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *ResearchTaskSummary) GetProjectContext() string {
+	if x != nil {
+		return x.ProjectContext
+	}
+	return ""
+}
+
 var File_gismo_v1_knowledge_proto protoreflect.FileDescriptor
 
 const file_gismo_v1_knowledge_proto_rawDesc = "" +
@@ -2445,7 +3191,72 @@ const file_gismo_v1_knowledge_proto_rawDesc = "" +
 	"\faccess_count\x18\x06 \x01(\x05R\vaccessCount\x12\x19\n" +
 	"\bttl_days\x18\a \x01(\x05R\attlDays\x12!\n" +
 	"\fresult_count\x18\b \x01(\x05R\vresultCount\x12-\n" +
-	"\x12average_usefulness\x18\t \x01(\x02R\x11averageUsefulness2\x80\x06\n" +
+	"\x12average_usefulness\x18\t \x01(\x02R\x11averageUsefulness\"\x99\x03\n" +
+	"\x19CreateResearchTaskRequest\x122\n" +
+	"\acontext\x18\x01 \x01(\v2\x18.gismo.v1.ProjectContextR\acontext\x12\"\n" +
+	"\finstructions\x18\x02 \x01(\tR\finstructions\x12\x14\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\x12<\n" +
+	"\routput_schema\x18\x04 \x01(\v2\x17.google.protobuf.StructR\foutputSchema\x12!\n" +
+	"\finfer_schema\x18\x05 \x01(\bR\vinferSchema\x12!\n" +
+	"\fuser_consent\x18\x06 \x01(\bR\vuserConsent\x12M\n" +
+	"\bmetadata\x18\a \x03(\v21.gismo.v1.CreateResearchTaskRequest.MetadataEntryR\bmetadata\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x90\x01\n" +
+	"\x1aCreateResearchTaskResponse\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12%\n" +
+	"\x0eestimated_cost\x18\x03 \x01(\x02R\restimatedCost\x12\x18\n" +
+	"\awarning\x18\x04 \x01(\tR\awarning\"k\n" +
+	"\x1cGetResearchTaskStatusRequest\x122\n" +
+	"\acontext\x18\x01 \x01(\v2\x18.gismo.v1.ProjectContextR\acontext\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\"\xe7\x03\n" +
+	"\x1dGetResearchTaskStatusResponse\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12)\n" +
+	"\x10progress_message\x18\x03 \x01(\tR\x0fprogressMessage\x12/\n" +
+	"\x06result\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x06result\x128\n" +
+	"\tcitations\x18\x05 \x03(\v2\x1a.gismo.v1.ResearchCitationR\tcitations\x12\x14\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\x12%\n" +
+	"\x0eestimated_cost\x18\a \x01(\x02R\restimatedCost\x12\x1f\n" +
+	"\vactual_cost\x18\b \x01(\x02R\n" +
+	"actualCost\x12'\n" +
+	"\x0felapsed_seconds\x18\t \x01(\x03R\x0eelapsedSeconds\x129\n" +
+	"\n" +
+	"created_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12=\n" +
+	"\fcompleted_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"\x8d\x01\n" +
+	"\x10ResearchCitation\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x16\n" +
+	"\x06author\x18\x03 \x01(\tR\x06author\x12!\n" +
+	"\fpublished_at\x18\x04 \x01(\tR\vpublishedAt\x12\x16\n" +
+	"\x06quotes\x18\x05 \x03(\tR\x06quotes\"h\n" +
+	"\x19CancelResearchTaskRequest\x122\n" +
+	"\acontext\x18\x01 \x01(\v2\x18.gismo.v1.ProjectContextR\acontext\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\"P\n" +
+	"\x1aCancelResearchTaskResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x9c\x01\n" +
+	"\x1eListActiveResearchTasksRequest\x122\n" +
+	"\acontext\x18\x01 \x01(\v2\x18.gismo.v1.ProjectContextR\acontext\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x120\n" +
+	"\x14include_all_projects\x18\x03 \x01(\bR\x12includeAllProjects\"w\n" +
+	"\x1fListActiveResearchTasksResponse\x123\n" +
+	"\x05tasks\x18\x01 \x03(\v2\x1d.gismo.v1.ResearchTaskSummaryR\x05tasks\x12\x1f\n" +
+	"\vtotal_count\x18\x02 \x01(\x05R\n" +
+	"totalCount\"\xdf\x02\n" +
+	"\x13ResearchTaskSummary\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\"\n" +
+	"\finstructions\x18\x02 \x01(\tR\finstructions\x12\x14\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12)\n" +
+	"\x10progress_message\x18\x05 \x01(\tR\x0fprogressMessage\x12%\n" +
+	"\x0eestimated_cost\x18\x06 \x01(\x02R\restimatedCost\x12'\n" +
+	"\x0felapsed_seconds\x18\a \x01(\x03R\x0eelapsedSeconds\x129\n" +
+	"\n" +
+	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12'\n" +
+	"\x0fproject_context\x18\t \x01(\tR\x0eprojectContext2\x9c\t\n" +
 	"\x10KnowledgeService\x12I\n" +
 	"\fImportDocset\x12\x1d.gismo.v1.ImportDocsetRequest\x1a\x18.gismo.v1.ImportProgress0\x01\x12J\n" +
 	"\vListDocsets\x12\x1c.gismo.v1.ListDocsetsRequest\x1a\x1d.gismo.v1.ListDocsetsResponse\x12M\n" +
@@ -2455,7 +3266,11 @@ const file_gismo_v1_knowledge_proto_rawDesc = "" +
 	"GetContent\x12\x1b.gismo.v1.GetContentRequest\x1a\x1c.gismo.v1.GetContentResponse\x12D\n" +
 	"\tExaSearch\x12\x1a.gismo.v1.ExaSearchRequest\x1a\x1b.gismo.v1.ExaSearchResponse\x12T\n" +
 	"\x0fProvideFeedback\x12\x1f.gismo.v1.SearchFeedbackRequest\x1a .gismo.v1.SearchFeedbackResponse\x12\\\n" +
-	"\x11GetCachedSearches\x12\".gismo.v1.GetCachedSearchesRequest\x1a#.gismo.v1.GetCachedSearchesResponse\x12?\n" +
+	"\x11GetCachedSearches\x12\".gismo.v1.GetCachedSearchesRequest\x1a#.gismo.v1.GetCachedSearchesResponse\x12_\n" +
+	"\x12CreateResearchTask\x12#.gismo.v1.CreateResearchTaskRequest\x1a$.gismo.v1.CreateResearchTaskResponse\x12h\n" +
+	"\x15GetResearchTaskStatus\x12&.gismo.v1.GetResearchTaskStatusRequest\x1a'.gismo.v1.GetResearchTaskStatusResponse\x12_\n" +
+	"\x12CancelResearchTask\x12#.gismo.v1.CancelResearchTaskRequest\x1a$.gismo.v1.CancelResearchTaskResponse\x12n\n" +
+	"\x17ListActiveResearchTasks\x12(.gismo.v1.ListActiveResearchTasksRequest\x1a).gismo.v1.ListActiveResearchTasksResponse\x12?\n" +
 	"\fExecuteQuery\x12\x16.gismo.v1.QueryRequest\x1a\x17.gismo.v1.QueryResponse\x12E\n" +
 	"\x12ExecuteQueryStream\x12\x16.gismo.v1.QueryRequest\x1a\x15.gismo.v1.QueryResult0\x01B\x97\x01\n" +
 	"\fcom.gismo.v1B\x0eKnowledgeProtoP\x01Z6github.com/jrossi/gismo/pkg/generated/gismo/v1;gismov1\xa2\x02\x03GXX\xaa\x02\bGismo.V1\xca\x02\bGismo\\V1\xe2\x02\x14Gismo\\V1\\GPBMetadata\xea\x02\tGismo::V1b\x06proto3"
@@ -2473,98 +3288,129 @@ func file_gismo_v1_knowledge_proto_rawDescGZIP() []byte {
 }
 
 var file_gismo_v1_knowledge_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_gismo_v1_knowledge_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_gismo_v1_knowledge_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_gismo_v1_knowledge_proto_goTypes = []any{
-	(ImportProgress_Stage)(0),         // 0: gismo.v1.ImportProgress.Stage
-	(SearchRequest_SearchType)(0),     // 1: gismo.v1.SearchRequest.SearchType
-	(*ProjectContext)(nil),            // 2: gismo.v1.ProjectContext
-	(*ImportDocsetRequest)(nil),       // 3: gismo.v1.ImportDocsetRequest
-	(*ImportProgress)(nil),            // 4: gismo.v1.ImportProgress
-	(*ListDocsetsRequest)(nil),        // 5: gismo.v1.ListDocsetsRequest
-	(*ListDocsetsResponse)(nil),       // 6: gismo.v1.ListDocsetsResponse
-	(*Docset)(nil),                    // 7: gismo.v1.Docset
-	(*RemoveDocsetRequest)(nil),       // 8: gismo.v1.RemoveDocsetRequest
-	(*RemoveDocsetResponse)(nil),      // 9: gismo.v1.RemoveDocsetResponse
-	(*SearchRequest)(nil),             // 10: gismo.v1.SearchRequest
-	(*SearchResponse)(nil),            // 11: gismo.v1.SearchResponse
-	(*SearchResult)(nil),              // 12: gismo.v1.SearchResult
-	(*GetContentRequest)(nil),         // 13: gismo.v1.GetContentRequest
-	(*GetContentResponse)(nil),        // 14: gismo.v1.GetContentResponse
-	(*QueryRequest)(nil),              // 15: gismo.v1.QueryRequest
-	(*QueryResponse)(nil),             // 16: gismo.v1.QueryResponse
-	(*QueryResult)(nil),               // 17: gismo.v1.QueryResult
-	(*QueryMetadata)(nil),             // 18: gismo.v1.QueryMetadata
-	(*QueryComplete)(nil),             // 19: gismo.v1.QueryComplete
-	(*ExaSearchRequest)(nil),          // 20: gismo.v1.ExaSearchRequest
-	(*ExaSearchOptions)(nil),          // 21: gismo.v1.ExaSearchOptions
-	(*ExaSearchResponse)(nil),         // 22: gismo.v1.ExaSearchResponse
-	(*ExaResult)(nil),                 // 23: gismo.v1.ExaResult
-	(*SearchFeedbackRequest)(nil),     // 24: gismo.v1.SearchFeedbackRequest
-	(*SearchFeedbackResponse)(nil),    // 25: gismo.v1.SearchFeedbackResponse
-	(*GetCachedSearchesRequest)(nil),  // 26: gismo.v1.GetCachedSearchesRequest
-	(*GetCachedSearchesResponse)(nil), // 27: gismo.v1.GetCachedSearchesResponse
-	(*CachedSearch)(nil),              // 28: gismo.v1.CachedSearch
-	nil,                               // 29: gismo.v1.ImportDocsetRequest.MetadataEntry
-	nil,                               // 30: gismo.v1.Docset.MetadataEntry
-	nil,                               // 31: gismo.v1.GetContentResponse.MetadataEntry
-	nil,                               // 32: gismo.v1.ExaResult.MetadataEntry
-	(*timestamppb.Timestamp)(nil),     // 33: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),           // 34: google.protobuf.Struct
+	(ImportProgress_Stage)(0),               // 0: gismo.v1.ImportProgress.Stage
+	(SearchRequest_SearchType)(0),           // 1: gismo.v1.SearchRequest.SearchType
+	(*ProjectContext)(nil),                  // 2: gismo.v1.ProjectContext
+	(*ImportDocsetRequest)(nil),             // 3: gismo.v1.ImportDocsetRequest
+	(*ImportProgress)(nil),                  // 4: gismo.v1.ImportProgress
+	(*ListDocsetsRequest)(nil),              // 5: gismo.v1.ListDocsetsRequest
+	(*ListDocsetsResponse)(nil),             // 6: gismo.v1.ListDocsetsResponse
+	(*Docset)(nil),                          // 7: gismo.v1.Docset
+	(*RemoveDocsetRequest)(nil),             // 8: gismo.v1.RemoveDocsetRequest
+	(*RemoveDocsetResponse)(nil),            // 9: gismo.v1.RemoveDocsetResponse
+	(*SearchRequest)(nil),                   // 10: gismo.v1.SearchRequest
+	(*SearchResponse)(nil),                  // 11: gismo.v1.SearchResponse
+	(*SearchResult)(nil),                    // 12: gismo.v1.SearchResult
+	(*GetContentRequest)(nil),               // 13: gismo.v1.GetContentRequest
+	(*GetContentResponse)(nil),              // 14: gismo.v1.GetContentResponse
+	(*QueryRequest)(nil),                    // 15: gismo.v1.QueryRequest
+	(*QueryResponse)(nil),                   // 16: gismo.v1.QueryResponse
+	(*QueryResult)(nil),                     // 17: gismo.v1.QueryResult
+	(*QueryMetadata)(nil),                   // 18: gismo.v1.QueryMetadata
+	(*QueryComplete)(nil),                   // 19: gismo.v1.QueryComplete
+	(*ExaSearchRequest)(nil),                // 20: gismo.v1.ExaSearchRequest
+	(*ExaSearchOptions)(nil),                // 21: gismo.v1.ExaSearchOptions
+	(*ExaSearchResponse)(nil),               // 22: gismo.v1.ExaSearchResponse
+	(*ExaResult)(nil),                       // 23: gismo.v1.ExaResult
+	(*SearchFeedbackRequest)(nil),           // 24: gismo.v1.SearchFeedbackRequest
+	(*SearchFeedbackResponse)(nil),          // 25: gismo.v1.SearchFeedbackResponse
+	(*GetCachedSearchesRequest)(nil),        // 26: gismo.v1.GetCachedSearchesRequest
+	(*GetCachedSearchesResponse)(nil),       // 27: gismo.v1.GetCachedSearchesResponse
+	(*CachedSearch)(nil),                    // 28: gismo.v1.CachedSearch
+	(*CreateResearchTaskRequest)(nil),       // 29: gismo.v1.CreateResearchTaskRequest
+	(*CreateResearchTaskResponse)(nil),      // 30: gismo.v1.CreateResearchTaskResponse
+	(*GetResearchTaskStatusRequest)(nil),    // 31: gismo.v1.GetResearchTaskStatusRequest
+	(*GetResearchTaskStatusResponse)(nil),   // 32: gismo.v1.GetResearchTaskStatusResponse
+	(*ResearchCitation)(nil),                // 33: gismo.v1.ResearchCitation
+	(*CancelResearchTaskRequest)(nil),       // 34: gismo.v1.CancelResearchTaskRequest
+	(*CancelResearchTaskResponse)(nil),      // 35: gismo.v1.CancelResearchTaskResponse
+	(*ListActiveResearchTasksRequest)(nil),  // 36: gismo.v1.ListActiveResearchTasksRequest
+	(*ListActiveResearchTasksResponse)(nil), // 37: gismo.v1.ListActiveResearchTasksResponse
+	(*ResearchTaskSummary)(nil),             // 38: gismo.v1.ResearchTaskSummary
+	nil,                                     // 39: gismo.v1.ImportDocsetRequest.MetadataEntry
+	nil,                                     // 40: gismo.v1.Docset.MetadataEntry
+	nil,                                     // 41: gismo.v1.GetContentResponse.MetadataEntry
+	nil,                                     // 42: gismo.v1.ExaResult.MetadataEntry
+	nil,                                     // 43: gismo.v1.CreateResearchTaskRequest.MetadataEntry
+	(*timestamppb.Timestamp)(nil),           // 44: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                 // 45: google.protobuf.Struct
 }
 var file_gismo_v1_knowledge_proto_depIdxs = []int32{
 	2,  // 0: gismo.v1.ImportDocsetRequest.context:type_name -> gismo.v1.ProjectContext
-	29, // 1: gismo.v1.ImportDocsetRequest.metadata:type_name -> gismo.v1.ImportDocsetRequest.MetadataEntry
+	39, // 1: gismo.v1.ImportDocsetRequest.metadata:type_name -> gismo.v1.ImportDocsetRequest.MetadataEntry
 	0,  // 2: gismo.v1.ImportProgress.stage:type_name -> gismo.v1.ImportProgress.Stage
 	2,  // 3: gismo.v1.ListDocsetsRequest.context:type_name -> gismo.v1.ProjectContext
 	7,  // 4: gismo.v1.ListDocsetsResponse.docsets:type_name -> gismo.v1.Docset
-	33, // 5: gismo.v1.Docset.imported_at:type_name -> google.protobuf.Timestamp
-	30, // 6: gismo.v1.Docset.metadata:type_name -> gismo.v1.Docset.MetadataEntry
+	44, // 5: gismo.v1.Docset.imported_at:type_name -> google.protobuf.Timestamp
+	40, // 6: gismo.v1.Docset.metadata:type_name -> gismo.v1.Docset.MetadataEntry
 	2,  // 7: gismo.v1.RemoveDocsetRequest.context:type_name -> gismo.v1.ProjectContext
 	2,  // 8: gismo.v1.SearchRequest.context:type_name -> gismo.v1.ProjectContext
 	1,  // 9: gismo.v1.SearchRequest.type:type_name -> gismo.v1.SearchRequest.SearchType
 	12, // 10: gismo.v1.SearchResponse.results:type_name -> gismo.v1.SearchResult
 	2,  // 11: gismo.v1.GetContentRequest.context:type_name -> gismo.v1.ProjectContext
-	31, // 12: gismo.v1.GetContentResponse.metadata:type_name -> gismo.v1.GetContentResponse.MetadataEntry
+	41, // 12: gismo.v1.GetContentResponse.metadata:type_name -> gismo.v1.GetContentResponse.MetadataEntry
 	2,  // 13: gismo.v1.QueryRequest.context:type_name -> gismo.v1.ProjectContext
-	34, // 14: gismo.v1.QueryRequest.parameters:type_name -> google.protobuf.Struct
-	34, // 15: gismo.v1.QueryResponse.rows:type_name -> google.protobuf.Struct
+	45, // 14: gismo.v1.QueryRequest.parameters:type_name -> google.protobuf.Struct
+	45, // 15: gismo.v1.QueryResponse.rows:type_name -> google.protobuf.Struct
 	18, // 16: gismo.v1.QueryResult.metadata:type_name -> gismo.v1.QueryMetadata
-	34, // 17: gismo.v1.QueryResult.row:type_name -> google.protobuf.Struct
+	45, // 17: gismo.v1.QueryResult.row:type_name -> google.protobuf.Struct
 	19, // 18: gismo.v1.QueryResult.complete:type_name -> gismo.v1.QueryComplete
 	2,  // 19: gismo.v1.ExaSearchRequest.context:type_name -> gismo.v1.ProjectContext
 	21, // 20: gismo.v1.ExaSearchRequest.options:type_name -> gismo.v1.ExaSearchOptions
 	23, // 21: gismo.v1.ExaSearchResponse.results:type_name -> gismo.v1.ExaResult
-	32, // 22: gismo.v1.ExaResult.metadata:type_name -> gismo.v1.ExaResult.MetadataEntry
+	42, // 22: gismo.v1.ExaResult.metadata:type_name -> gismo.v1.ExaResult.MetadataEntry
 	2,  // 23: gismo.v1.SearchFeedbackRequest.context:type_name -> gismo.v1.ProjectContext
 	2,  // 24: gismo.v1.GetCachedSearchesRequest.context:type_name -> gismo.v1.ProjectContext
 	28, // 25: gismo.v1.GetCachedSearchesResponse.searches:type_name -> gismo.v1.CachedSearch
-	33, // 26: gismo.v1.CachedSearch.created_at:type_name -> google.protobuf.Timestamp
-	33, // 27: gismo.v1.CachedSearch.last_accessed:type_name -> google.protobuf.Timestamp
-	3,  // 28: gismo.v1.KnowledgeService.ImportDocset:input_type -> gismo.v1.ImportDocsetRequest
-	5,  // 29: gismo.v1.KnowledgeService.ListDocsets:input_type -> gismo.v1.ListDocsetsRequest
-	8,  // 30: gismo.v1.KnowledgeService.RemoveDocset:input_type -> gismo.v1.RemoveDocsetRequest
-	10, // 31: gismo.v1.KnowledgeService.Search:input_type -> gismo.v1.SearchRequest
-	13, // 32: gismo.v1.KnowledgeService.GetContent:input_type -> gismo.v1.GetContentRequest
-	20, // 33: gismo.v1.KnowledgeService.ExaSearch:input_type -> gismo.v1.ExaSearchRequest
-	24, // 34: gismo.v1.KnowledgeService.ProvideFeedback:input_type -> gismo.v1.SearchFeedbackRequest
-	26, // 35: gismo.v1.KnowledgeService.GetCachedSearches:input_type -> gismo.v1.GetCachedSearchesRequest
-	15, // 36: gismo.v1.KnowledgeService.ExecuteQuery:input_type -> gismo.v1.QueryRequest
-	15, // 37: gismo.v1.KnowledgeService.ExecuteQueryStream:input_type -> gismo.v1.QueryRequest
-	4,  // 38: gismo.v1.KnowledgeService.ImportDocset:output_type -> gismo.v1.ImportProgress
-	6,  // 39: gismo.v1.KnowledgeService.ListDocsets:output_type -> gismo.v1.ListDocsetsResponse
-	9,  // 40: gismo.v1.KnowledgeService.RemoveDocset:output_type -> gismo.v1.RemoveDocsetResponse
-	11, // 41: gismo.v1.KnowledgeService.Search:output_type -> gismo.v1.SearchResponse
-	14, // 42: gismo.v1.KnowledgeService.GetContent:output_type -> gismo.v1.GetContentResponse
-	22, // 43: gismo.v1.KnowledgeService.ExaSearch:output_type -> gismo.v1.ExaSearchResponse
-	25, // 44: gismo.v1.KnowledgeService.ProvideFeedback:output_type -> gismo.v1.SearchFeedbackResponse
-	27, // 45: gismo.v1.KnowledgeService.GetCachedSearches:output_type -> gismo.v1.GetCachedSearchesResponse
-	16, // 46: gismo.v1.KnowledgeService.ExecuteQuery:output_type -> gismo.v1.QueryResponse
-	17, // 47: gismo.v1.KnowledgeService.ExecuteQueryStream:output_type -> gismo.v1.QueryResult
-	38, // [38:48] is the sub-list for method output_type
-	28, // [28:38] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	44, // 26: gismo.v1.CachedSearch.created_at:type_name -> google.protobuf.Timestamp
+	44, // 27: gismo.v1.CachedSearch.last_accessed:type_name -> google.protobuf.Timestamp
+	2,  // 28: gismo.v1.CreateResearchTaskRequest.context:type_name -> gismo.v1.ProjectContext
+	45, // 29: gismo.v1.CreateResearchTaskRequest.output_schema:type_name -> google.protobuf.Struct
+	43, // 30: gismo.v1.CreateResearchTaskRequest.metadata:type_name -> gismo.v1.CreateResearchTaskRequest.MetadataEntry
+	2,  // 31: gismo.v1.GetResearchTaskStatusRequest.context:type_name -> gismo.v1.ProjectContext
+	45, // 32: gismo.v1.GetResearchTaskStatusResponse.result:type_name -> google.protobuf.Struct
+	33, // 33: gismo.v1.GetResearchTaskStatusResponse.citations:type_name -> gismo.v1.ResearchCitation
+	44, // 34: gismo.v1.GetResearchTaskStatusResponse.created_at:type_name -> google.protobuf.Timestamp
+	44, // 35: gismo.v1.GetResearchTaskStatusResponse.completed_at:type_name -> google.protobuf.Timestamp
+	2,  // 36: gismo.v1.CancelResearchTaskRequest.context:type_name -> gismo.v1.ProjectContext
+	2,  // 37: gismo.v1.ListActiveResearchTasksRequest.context:type_name -> gismo.v1.ProjectContext
+	38, // 38: gismo.v1.ListActiveResearchTasksResponse.tasks:type_name -> gismo.v1.ResearchTaskSummary
+	44, // 39: gismo.v1.ResearchTaskSummary.created_at:type_name -> google.protobuf.Timestamp
+	3,  // 40: gismo.v1.KnowledgeService.ImportDocset:input_type -> gismo.v1.ImportDocsetRequest
+	5,  // 41: gismo.v1.KnowledgeService.ListDocsets:input_type -> gismo.v1.ListDocsetsRequest
+	8,  // 42: gismo.v1.KnowledgeService.RemoveDocset:input_type -> gismo.v1.RemoveDocsetRequest
+	10, // 43: gismo.v1.KnowledgeService.Search:input_type -> gismo.v1.SearchRequest
+	13, // 44: gismo.v1.KnowledgeService.GetContent:input_type -> gismo.v1.GetContentRequest
+	20, // 45: gismo.v1.KnowledgeService.ExaSearch:input_type -> gismo.v1.ExaSearchRequest
+	24, // 46: gismo.v1.KnowledgeService.ProvideFeedback:input_type -> gismo.v1.SearchFeedbackRequest
+	26, // 47: gismo.v1.KnowledgeService.GetCachedSearches:input_type -> gismo.v1.GetCachedSearchesRequest
+	29, // 48: gismo.v1.KnowledgeService.CreateResearchTask:input_type -> gismo.v1.CreateResearchTaskRequest
+	31, // 49: gismo.v1.KnowledgeService.GetResearchTaskStatus:input_type -> gismo.v1.GetResearchTaskStatusRequest
+	34, // 50: gismo.v1.KnowledgeService.CancelResearchTask:input_type -> gismo.v1.CancelResearchTaskRequest
+	36, // 51: gismo.v1.KnowledgeService.ListActiveResearchTasks:input_type -> gismo.v1.ListActiveResearchTasksRequest
+	15, // 52: gismo.v1.KnowledgeService.ExecuteQuery:input_type -> gismo.v1.QueryRequest
+	15, // 53: gismo.v1.KnowledgeService.ExecuteQueryStream:input_type -> gismo.v1.QueryRequest
+	4,  // 54: gismo.v1.KnowledgeService.ImportDocset:output_type -> gismo.v1.ImportProgress
+	6,  // 55: gismo.v1.KnowledgeService.ListDocsets:output_type -> gismo.v1.ListDocsetsResponse
+	9,  // 56: gismo.v1.KnowledgeService.RemoveDocset:output_type -> gismo.v1.RemoveDocsetResponse
+	11, // 57: gismo.v1.KnowledgeService.Search:output_type -> gismo.v1.SearchResponse
+	14, // 58: gismo.v1.KnowledgeService.GetContent:output_type -> gismo.v1.GetContentResponse
+	22, // 59: gismo.v1.KnowledgeService.ExaSearch:output_type -> gismo.v1.ExaSearchResponse
+	25, // 60: gismo.v1.KnowledgeService.ProvideFeedback:output_type -> gismo.v1.SearchFeedbackResponse
+	27, // 61: gismo.v1.KnowledgeService.GetCachedSearches:output_type -> gismo.v1.GetCachedSearchesResponse
+	30, // 62: gismo.v1.KnowledgeService.CreateResearchTask:output_type -> gismo.v1.CreateResearchTaskResponse
+	32, // 63: gismo.v1.KnowledgeService.GetResearchTaskStatus:output_type -> gismo.v1.GetResearchTaskStatusResponse
+	35, // 64: gismo.v1.KnowledgeService.CancelResearchTask:output_type -> gismo.v1.CancelResearchTaskResponse
+	37, // 65: gismo.v1.KnowledgeService.ListActiveResearchTasks:output_type -> gismo.v1.ListActiveResearchTasksResponse
+	16, // 66: gismo.v1.KnowledgeService.ExecuteQuery:output_type -> gismo.v1.QueryResponse
+	17, // 67: gismo.v1.KnowledgeService.ExecuteQueryStream:output_type -> gismo.v1.QueryResult
+	54, // [54:68] is the sub-list for method output_type
+	40, // [40:54] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_gismo_v1_knowledge_proto_init() }
@@ -2588,7 +3434,7 @@ func file_gismo_v1_knowledge_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_gismo_v1_knowledge_proto_rawDesc), len(file_gismo_v1_knowledge_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   31,
+			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

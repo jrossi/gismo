@@ -22,6 +22,12 @@ service KnowledgeService {
   rpc ProvideFeedback(SearchFeedbackRequest) returns (SearchFeedbackResponse);
   rpc GetCachedSearches(GetCachedSearchesRequest) returns (GetCachedSearchesResponse);
 
+  // Exa Research API (expensive, structured data extraction)
+  rpc CreateResearchTask(CreateResearchTaskRequest) returns (CreateResearchTaskResponse);
+  rpc GetResearchTaskStatus(GetResearchTaskStatusRequest) returns (GetResearchTaskStatusResponse);
+  rpc CancelResearchTask(CancelResearchTaskRequest) returns (CancelResearchTaskResponse);
+  rpc ListActiveResearchTasks(ListActiveResearchTasksRequest) returns (ListActiveResearchTasksResponse);
+
   // Raw SQL access
   rpc ExecuteQuery(QueryRequest) returns (QueryResponse);
   rpc ExecuteQueryStream(QueryRequest) returns (stream QueryResult);
@@ -285,4 +291,93 @@ message CachedSearch {
   int32 ttl_days = 7;
   int32 result_count = 8;
   float average_usefulness = 9;
+}
+
+// ============ Exa Research API ============
+
+// Create research task request
+message CreateResearchTaskRequest {
+  ProjectContext context = 1;
+  string instructions = 2;  // Max 4096 characters
+  string model = 3;  // "exa-research" or "exa-research-pro"
+  google.protobuf.Struct output_schema = 4;  // Optional JSON schema
+  bool infer_schema = 5;  // Let LLM generate schema
+  bool user_consent = 6;  // Required for expensive operations
+  map<string, string> metadata = 7;  // Additional metadata
+}
+
+// Create research task response
+message CreateResearchTaskResponse {
+  string task_id = 1;
+  string message = 2;
+  float estimated_cost = 3;
+  string warning = 4;  // Cost warning if applicable
+}
+
+// Get research task status request
+message GetResearchTaskStatusRequest {
+  ProjectContext context = 1;
+  string task_id = 2;
+}
+
+// Get research task status response
+message GetResearchTaskStatusResponse {
+  string task_id = 1;
+  string status = 2;  // pending, running, polling, completed, failed, canceled
+  string progress_message = 3;
+  google.protobuf.Struct result = 4;  // Structured result when completed
+  repeated ResearchCitation citations = 5;
+  string error = 6;
+  float estimated_cost = 7;
+  float actual_cost = 8;
+  int64 elapsed_seconds = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp completed_at = 11;
+}
+
+// Research citation
+message ResearchCitation {
+  string url = 1;
+  string title = 2;
+  string author = 3;
+  string published_at = 4;
+  repeated string quotes = 5;
+}
+
+// Cancel research task request
+message CancelResearchTaskRequest {
+  ProjectContext context = 1;
+  string task_id = 2;
+}
+
+// Cancel research task response
+message CancelResearchTaskResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// List active research tasks request
+message ListActiveResearchTasksRequest {
+  ProjectContext context = 1;
+  int32 limit = 2;  // Default 20
+  bool include_all_projects = 3;  // Show tasks from all projects
+}
+
+// List active research tasks response
+message ListActiveResearchTasksResponse {
+  repeated ResearchTaskSummary tasks = 1;
+  int32 total_count = 2;
+}
+
+// Research task summary
+message ResearchTaskSummary {
+  string task_id = 1;
+  string instructions = 2;
+  string model = 3;
+  string status = 4;
+  string progress_message = 5;
+  float estimated_cost = 6;
+  int64 elapsed_seconds = 7;
+  google.protobuf.Timestamp created_at = 8;
+  string project_context = 9;
 }

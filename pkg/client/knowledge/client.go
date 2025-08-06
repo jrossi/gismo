@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/jrossi/gismo/pkg/database/project"
 	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
@@ -299,6 +300,75 @@ func (c *Client) GetCachedSearches(ctx context.Context, limit int, queryFilter s
 	}
 
 	return c.client.GetCachedSearches(ctx, req)
+}
+
+// CreateResearchTask creates a new research task
+func (c *Client) CreateResearchTask(ctx context.Context, instructions string, model string, schema map[string]interface{}, userConsent bool) (*gismov1.CreateResearchTaskResponse, error) {
+	projCtx := getProjectContext()
+
+	req := &gismov1.CreateResearchTaskRequest{
+		Context:      projCtx,
+		Instructions: instructions,
+		Model:        model,
+		UserConsent:  userConsent,
+	}
+
+	// Convert schema if provided
+	if schema != nil {
+		schemaStruct, err := structpb.NewStruct(schema)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert schema: %w", err)
+		}
+		req.OutputSchema = schemaStruct
+	}
+
+	return c.client.CreateResearchTask(ctx, req)
+}
+
+// GetResearchTaskStatus gets the status of a research task
+func (c *Client) GetResearchTaskStatus(ctx context.Context, taskID string) (*gismov1.GetResearchTaskStatusResponse, error) {
+	projCtx := getProjectContext()
+
+	req := &gismov1.GetResearchTaskStatusRequest{
+		Context: projCtx,
+		TaskId:  taskID,
+	}
+
+	return c.client.GetResearchTaskStatus(ctx, req)
+}
+
+// CancelResearchTask cancels a running research task
+func (c *Client) CancelResearchTask(ctx context.Context, taskID string) (*gismov1.CancelResearchTaskResponse, error) {
+	projCtx := getProjectContext()
+
+	req := &gismov1.CancelResearchTaskRequest{
+		Context: projCtx,
+		TaskId:  taskID,
+	}
+
+	return c.client.CancelResearchTask(ctx, req)
+}
+
+// ListActiveResearchTasks lists all active research tasks
+func (c *Client) ListActiveResearchTasks(ctx context.Context, includeAllProjects bool, limit int) (*gismov1.ListActiveResearchTasksResponse, error) {
+	projCtx := getProjectContext()
+
+	// Safe conversion with bounds check
+	safeLimit := limit
+	if safeLimit > 2147483647 {
+		safeLimit = 2147483647
+	}
+	if safeLimit < 0 {
+		safeLimit = 20
+	}
+
+	req := &gismov1.ListActiveResearchTasksRequest{
+		Context:            projCtx,
+		Limit:              int32(safeLimit), // #nosec G115 - bounded above
+		IncludeAllProjects: includeAllProjects,
+	}
+
+	return c.client.ListActiveResearchTasks(ctx, req)
 }
 
 // ExaSearchOptions contains options for Exa search

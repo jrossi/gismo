@@ -19,16 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	KnowledgeService_ImportDocset_FullMethodName       = "/gismo.v1.KnowledgeService/ImportDocset"
-	KnowledgeService_ListDocsets_FullMethodName        = "/gismo.v1.KnowledgeService/ListDocsets"
-	KnowledgeService_RemoveDocset_FullMethodName       = "/gismo.v1.KnowledgeService/RemoveDocset"
-	KnowledgeService_Search_FullMethodName             = "/gismo.v1.KnowledgeService/Search"
-	KnowledgeService_GetContent_FullMethodName         = "/gismo.v1.KnowledgeService/GetContent"
-	KnowledgeService_ExaSearch_FullMethodName          = "/gismo.v1.KnowledgeService/ExaSearch"
-	KnowledgeService_ProvideFeedback_FullMethodName    = "/gismo.v1.KnowledgeService/ProvideFeedback"
-	KnowledgeService_GetCachedSearches_FullMethodName  = "/gismo.v1.KnowledgeService/GetCachedSearches"
-	KnowledgeService_ExecuteQuery_FullMethodName       = "/gismo.v1.KnowledgeService/ExecuteQuery"
-	KnowledgeService_ExecuteQueryStream_FullMethodName = "/gismo.v1.KnowledgeService/ExecuteQueryStream"
+	KnowledgeService_ImportDocset_FullMethodName            = "/gismo.v1.KnowledgeService/ImportDocset"
+	KnowledgeService_ListDocsets_FullMethodName             = "/gismo.v1.KnowledgeService/ListDocsets"
+	KnowledgeService_RemoveDocset_FullMethodName            = "/gismo.v1.KnowledgeService/RemoveDocset"
+	KnowledgeService_Search_FullMethodName                  = "/gismo.v1.KnowledgeService/Search"
+	KnowledgeService_GetContent_FullMethodName              = "/gismo.v1.KnowledgeService/GetContent"
+	KnowledgeService_ExaSearch_FullMethodName               = "/gismo.v1.KnowledgeService/ExaSearch"
+	KnowledgeService_ProvideFeedback_FullMethodName         = "/gismo.v1.KnowledgeService/ProvideFeedback"
+	KnowledgeService_GetCachedSearches_FullMethodName       = "/gismo.v1.KnowledgeService/GetCachedSearches"
+	KnowledgeService_CreateResearchTask_FullMethodName      = "/gismo.v1.KnowledgeService/CreateResearchTask"
+	KnowledgeService_GetResearchTaskStatus_FullMethodName   = "/gismo.v1.KnowledgeService/GetResearchTaskStatus"
+	KnowledgeService_CancelResearchTask_FullMethodName      = "/gismo.v1.KnowledgeService/CancelResearchTask"
+	KnowledgeService_ListActiveResearchTasks_FullMethodName = "/gismo.v1.KnowledgeService/ListActiveResearchTasks"
+	KnowledgeService_ExecuteQuery_FullMethodName            = "/gismo.v1.KnowledgeService/ExecuteQuery"
+	KnowledgeService_ExecuteQueryStream_FullMethodName      = "/gismo.v1.KnowledgeService/ExecuteQueryStream"
 )
 
 // KnowledgeServiceClient is the client API for KnowledgeService service.
@@ -46,6 +50,11 @@ type KnowledgeServiceClient interface {
 	ExaSearch(ctx context.Context, in *ExaSearchRequest, opts ...grpc.CallOption) (*ExaSearchResponse, error)
 	ProvideFeedback(ctx context.Context, in *SearchFeedbackRequest, opts ...grpc.CallOption) (*SearchFeedbackResponse, error)
 	GetCachedSearches(ctx context.Context, in *GetCachedSearchesRequest, opts ...grpc.CallOption) (*GetCachedSearchesResponse, error)
+	// Exa Research API (expensive, structured data extraction)
+	CreateResearchTask(ctx context.Context, in *CreateResearchTaskRequest, opts ...grpc.CallOption) (*CreateResearchTaskResponse, error)
+	GetResearchTaskStatus(ctx context.Context, in *GetResearchTaskStatusRequest, opts ...grpc.CallOption) (*GetResearchTaskStatusResponse, error)
+	CancelResearchTask(ctx context.Context, in *CancelResearchTaskRequest, opts ...grpc.CallOption) (*CancelResearchTaskResponse, error)
+	ListActiveResearchTasks(ctx context.Context, in *ListActiveResearchTasksRequest, opts ...grpc.CallOption) (*ListActiveResearchTasksResponse, error)
 	// Raw SQL access
 	ExecuteQuery(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error)
 	ExecuteQueryStream(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[QueryResult], error)
@@ -148,6 +157,46 @@ func (c *knowledgeServiceClient) GetCachedSearches(ctx context.Context, in *GetC
 	return out, nil
 }
 
+func (c *knowledgeServiceClient) CreateResearchTask(ctx context.Context, in *CreateResearchTaskRequest, opts ...grpc.CallOption) (*CreateResearchTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateResearchTaskResponse)
+	err := c.cc.Invoke(ctx, KnowledgeService_CreateResearchTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *knowledgeServiceClient) GetResearchTaskStatus(ctx context.Context, in *GetResearchTaskStatusRequest, opts ...grpc.CallOption) (*GetResearchTaskStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetResearchTaskStatusResponse)
+	err := c.cc.Invoke(ctx, KnowledgeService_GetResearchTaskStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *knowledgeServiceClient) CancelResearchTask(ctx context.Context, in *CancelResearchTaskRequest, opts ...grpc.CallOption) (*CancelResearchTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelResearchTaskResponse)
+	err := c.cc.Invoke(ctx, KnowledgeService_CancelResearchTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *knowledgeServiceClient) ListActiveResearchTasks(ctx context.Context, in *ListActiveResearchTasksRequest, opts ...grpc.CallOption) (*ListActiveResearchTasksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListActiveResearchTasksResponse)
+	err := c.cc.Invoke(ctx, KnowledgeService_ListActiveResearchTasks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *knowledgeServiceClient) ExecuteQuery(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(QueryResponse)
@@ -192,6 +241,11 @@ type KnowledgeServiceServer interface {
 	ExaSearch(context.Context, *ExaSearchRequest) (*ExaSearchResponse, error)
 	ProvideFeedback(context.Context, *SearchFeedbackRequest) (*SearchFeedbackResponse, error)
 	GetCachedSearches(context.Context, *GetCachedSearchesRequest) (*GetCachedSearchesResponse, error)
+	// Exa Research API (expensive, structured data extraction)
+	CreateResearchTask(context.Context, *CreateResearchTaskRequest) (*CreateResearchTaskResponse, error)
+	GetResearchTaskStatus(context.Context, *GetResearchTaskStatusRequest) (*GetResearchTaskStatusResponse, error)
+	CancelResearchTask(context.Context, *CancelResearchTaskRequest) (*CancelResearchTaskResponse, error)
+	ListActiveResearchTasks(context.Context, *ListActiveResearchTasksRequest) (*ListActiveResearchTasksResponse, error)
 	// Raw SQL access
 	ExecuteQuery(context.Context, *QueryRequest) (*QueryResponse, error)
 	ExecuteQueryStream(*QueryRequest, grpc.ServerStreamingServer[QueryResult]) error
@@ -228,6 +282,18 @@ func (UnimplementedKnowledgeServiceServer) ProvideFeedback(context.Context, *Sea
 }
 func (UnimplementedKnowledgeServiceServer) GetCachedSearches(context.Context, *GetCachedSearchesRequest) (*GetCachedSearchesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCachedSearches not implemented")
+}
+func (UnimplementedKnowledgeServiceServer) CreateResearchTask(context.Context, *CreateResearchTaskRequest) (*CreateResearchTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateResearchTask not implemented")
+}
+func (UnimplementedKnowledgeServiceServer) GetResearchTaskStatus(context.Context, *GetResearchTaskStatusRequest) (*GetResearchTaskStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetResearchTaskStatus not implemented")
+}
+func (UnimplementedKnowledgeServiceServer) CancelResearchTask(context.Context, *CancelResearchTaskRequest) (*CancelResearchTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CancelResearchTask not implemented")
+}
+func (UnimplementedKnowledgeServiceServer) ListActiveResearchTasks(context.Context, *ListActiveResearchTasksRequest) (*ListActiveResearchTasksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListActiveResearchTasks not implemented")
 }
 func (UnimplementedKnowledgeServiceServer) ExecuteQuery(context.Context, *QueryRequest) (*QueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteQuery not implemented")
@@ -393,6 +459,78 @@ func _KnowledgeService_GetCachedSearches_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KnowledgeService_CreateResearchTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateResearchTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KnowledgeServiceServer).CreateResearchTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KnowledgeService_CreateResearchTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KnowledgeServiceServer).CreateResearchTask(ctx, req.(*CreateResearchTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KnowledgeService_GetResearchTaskStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetResearchTaskStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KnowledgeServiceServer).GetResearchTaskStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KnowledgeService_GetResearchTaskStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KnowledgeServiceServer).GetResearchTaskStatus(ctx, req.(*GetResearchTaskStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KnowledgeService_CancelResearchTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelResearchTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KnowledgeServiceServer).CancelResearchTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KnowledgeService_CancelResearchTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KnowledgeServiceServer).CancelResearchTask(ctx, req.(*CancelResearchTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KnowledgeService_ListActiveResearchTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListActiveResearchTasksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KnowledgeServiceServer).ListActiveResearchTasks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KnowledgeService_ListActiveResearchTasks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KnowledgeServiceServer).ListActiveResearchTasks(ctx, req.(*ListActiveResearchTasksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _KnowledgeService_ExecuteQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryRequest)
 	if err := dec(in); err != nil {
@@ -456,6 +594,22 @@ var KnowledgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCachedSearches",
 			Handler:    _KnowledgeService_GetCachedSearches_Handler,
+		},
+		{
+			MethodName: "CreateResearchTask",
+			Handler:    _KnowledgeService_CreateResearchTask_Handler,
+		},
+		{
+			MethodName: "GetResearchTaskStatus",
+			Handler:    _KnowledgeService_GetResearchTaskStatus_Handler,
+		},
+		{
+			MethodName: "CancelResearchTask",
+			Handler:    _KnowledgeService_CancelResearchTask_Handler,
+		},
+		{
+			MethodName: "ListActiveResearchTasks",
+			Handler:    _KnowledgeService_ListActiveResearchTasks_Handler,
 		},
 		{
 			MethodName: "ExecuteQuery",
