@@ -102,6 +102,10 @@ func (s *Server) Start() error {
 		gismov1.RegisterKnowledgeServiceServer(s.grpcServer, knowledgeHandler)
 	}
 
+	// Register CodeSitter service
+	codeSitterHandler := handlers.NewCodeSitterHandler()
+	gismov1.RegisterCodeSitterServer(s.grpcServer, codeSitterHandler)
+
 	// Start serving in background
 	go func() {
 		if err := s.grpcServer.Serve(s.listener); err != nil {
