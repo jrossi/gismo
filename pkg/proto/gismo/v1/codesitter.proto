@@ -1,0 +1,471 @@
+syntax = "proto3";
+
+package gismo.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/jrossi/gismo/pkg/generated/gismo/v1";
+
+// CodeSitter service provides intelligent code analysis using tree-sitter
+service CodeSitter {
+  // Initialize workspace and start watching files
+  rpc InitializeWorkspace(InitializeWorkspaceRequest) returns (InitializeWorkspaceResponse);
+  
+  // Shutdown workspace and cleanup resources
+  rpc ShutdownWorkspace(ShutdownWorkspaceRequest) returns (ShutdownWorkspaceResponse);
+  
+  // Symbol operations
+  rpc QuerySymbols(QuerySymbolsRequest) returns (QuerySymbolsResponse);
+  rpc FindReferences(FindReferencesRequest) returns (FindReferencesResponse);
+  rpc GetSymbolDefinition(GetSymbolDefinitionRequest) returns (GetSymbolDefinitionResponse);
+  rpc GetCallGraph(GetCallGraphRequest) returns (GetCallGraphResponse);
+  
+  // Code analysis
+  rpc AnalyzeSecurity(AnalyzeSecurityRequest) returns (AnalyzeSecurityResponse);
+  rpc DetectPatterns(DetectPatternsRequest) returns (DetectPatternsResponse);
+  rpc ValidateEdit(ValidateEditRequest) returns (ValidateEditResponse);
+  rpc GetDiagnostics(GetDiagnosticsRequest) returns (GetDiagnosticsResponse);
+  
+  // Code intelligence
+  rpc GetTypeInfo(GetTypeInfoRequest) returns (GetTypeInfoResponse);
+  rpc SuggestRefactoring(SuggestRefactoringRequest) returns (SuggestRefactoringResponse);
+  rpc GetCodeMetrics(GetCodeMetricsRequest) returns (GetCodeMetricsResponse);
+  
+  // Real-time updates (streaming)
+  rpc WatchFiles(WatchFilesRequest) returns (stream FileChangeEvent);
+  rpc WatchSymbols(WatchSymbolsRequest) returns (stream SymbolChangeEvent);
+  rpc WatchDiagnostics(WatchDiagnosticsRequest) returns (stream DiagnosticEvent);
+}
+
+// Common messages
+
+message Location {
+  string file_path = 1;
+  int32 start_line = 2;
+  int32 start_column = 3;
+  int32 end_line = 4;
+  int32 end_column = 5;
+  int32 start_byte = 6;
+  int32 end_byte = 7;
+}
+
+message Range {
+  Location start = 1;
+  Location end = 2;
+}
+
+message Symbol {
+  string name = 1;
+  SymbolKind kind = 2;
+  Location location = 3;
+  string signature = 4;
+  repeated string modifiers = 5;  // public, static, async, exported, etc.
+  string documentation = 6;
+  string parent_symbol = 7;  // For nested symbols
+  map<string, string> metadata = 8;
+}
+
+enum SymbolKind {
+  SYMBOL_KIND_UNSPECIFIED = 0;
+  SYMBOL_KIND_FILE = 1;
+  SYMBOL_KIND_MODULE = 2;
+  SYMBOL_KIND_NAMESPACE = 3;
+  SYMBOL_KIND_PACKAGE = 4;
+  SYMBOL_KIND_CLASS = 5;
+  SYMBOL_KIND_METHOD = 6;
+  SYMBOL_KIND_PROPERTY = 7;
+  SYMBOL_KIND_FIELD = 8;
+  SYMBOL_KIND_CONSTRUCTOR = 9;
+  SYMBOL_KIND_ENUM = 10;
+  SYMBOL_KIND_INTERFACE = 11;
+  SYMBOL_KIND_FUNCTION = 12;
+  SYMBOL_KIND_VARIABLE = 13;
+  SYMBOL_KIND_CONSTANT = 14;
+  SYMBOL_KIND_STRING = 15;
+  SYMBOL_KIND_NUMBER = 16;
+  SYMBOL_KIND_BOOLEAN = 17;
+  SYMBOL_KIND_ARRAY = 18;
+  SYMBOL_KIND_OBJECT = 19;
+  SYMBOL_KIND_KEY = 20;
+  SYMBOL_KIND_NULL = 21;
+  SYMBOL_KIND_ENUM_MEMBER = 22;
+  SYMBOL_KIND_STRUCT = 23;
+  SYMBOL_KIND_EVENT = 24;
+  SYMBOL_KIND_OPERATOR = 25;
+  SYMBOL_KIND_TYPE_PARAMETER = 26;
+}
+
+message Diagnostic {
+  enum Severity {
+    SEVERITY_UNSPECIFIED = 0;
+    SEVERITY_ERROR = 1;
+    SEVERITY_WARNING = 2;
+    SEVERITY_INFO = 3;
+    SEVERITY_HINT = 4;
+  }
+  
+  string message = 1;
+  Severity severity = 2;
+  Location location = 3;
+  string code = 4;  // Error code
+  string source = 5;  // Source of diagnostic (e.g., "security", "syntax")
+  repeated string tags = 6;
+  map<string, string> metadata = 7;
+}
+
+// Workspace initialization
+
+message InitializeWorkspaceRequest {
+  string workspace_root = 1;
+  repeated string file_patterns = 2;  // Glob patterns like "**/*.go"
+  bool enable_file_watching = 3;
+  bool enable_incremental_parsing = 4;
+  repeated string languages = 5;  // Languages to support
+  map<string, string> parser_options = 6;
+  int32 max_file_size = 7;  // Skip files larger than this (bytes)
+  repeated string exclude_patterns = 8;  // Patterns to exclude
+}
+
+message InitializeWorkspaceResponse {
+  bool success = 1;
+  int32 files_parsed = 2;
+  int32 total_symbols = 3;
+  repeated string supported_languages = 4;
+  string session_id = 5;
+  map<string, int32> file_counts_by_language = 6;
+}
+
+message ShutdownWorkspaceRequest {
+  string session_id = 1;
+  bool cleanup_cache = 2;
+}
+
+message ShutdownWorkspaceResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Symbol queries
+
+message QuerySymbolsRequest {
+  string query = 1;  // Tree-sitter query syntax
+  string language = 2;  // Target language
+  repeated string file_patterns = 3;
+  repeated SymbolKind kinds = 4;
+  int32 max_results = 5;
+  bool include_documentation = 6;
+}
+
+message QuerySymbolsResponse {
+  repeated Symbol symbols = 1;
+  int32 total_matches = 2;
+  bool truncated = 3;
+}
+
+message FindReferencesRequest {
+  string symbol_name = 1;
+  Location symbol_location = 2;  // Optional, for more precise matching
+  repeated string file_patterns = 3;
+  bool include_declarations = 4;
+  int32 max_results = 5;
+}
+
+message FindReferencesResponse {
+  repeated Reference references = 1;
+  int32 total_references = 2;
+  bool truncated = 3;
+}
+
+message Reference {
+  Location location = 1;
+  string text = 2;  // Text at reference location
+  ReferenceKind kind = 3;
+  string containing_symbol = 4;
+}
+
+enum ReferenceKind {
+  REFERENCE_KIND_UNSPECIFIED = 0;
+  REFERENCE_KIND_READ = 1;
+  REFERENCE_KIND_WRITE = 2;
+  REFERENCE_KIND_CALL = 3;
+  REFERENCE_KIND_TYPE = 4;
+  REFERENCE_KIND_IMPORT = 5;
+  REFERENCE_KIND_DECLARATION = 6;
+}
+
+message GetSymbolDefinitionRequest {
+  string symbol_name = 1;
+  Location context_location = 2;  // Where the symbol is used
+}
+
+message GetSymbolDefinitionResponse {
+  Symbol definition = 1;
+  bool found = 2;
+}
+
+message GetCallGraphRequest {
+  string function_name = 1;
+  Location function_location = 2;
+  int32 max_depth = 3;  // How deep to traverse
+  bool include_indirect_calls = 4;
+}
+
+message GetCallGraphResponse {
+  CallGraphNode root = 1;
+  int32 total_nodes = 2;
+  int32 max_depth_reached = 3;
+}
+
+message CallGraphNode {
+  Symbol symbol = 1;
+  repeated CallGraphEdge calls = 2;
+  repeated CallGraphEdge called_by = 3;
+}
+
+message CallGraphEdge {
+  Symbol target = 1;
+  Location call_site = 2;
+  bool is_direct = 3;
+  map<string, string> metadata = 4;
+}
+
+// Security analysis
+
+message AnalyzeSecurityRequest {
+  repeated string file_patterns = 1;
+  repeated SecurityRule rules = 2;
+  bool include_info_level = 3;
+}
+
+message SecurityRule {
+  string id = 1;
+  string name = 2;
+  string pattern = 3;  // Tree-sitter query
+  Diagnostic.Severity severity = 4;
+  string message = 5;
+}
+
+message AnalyzeSecurityResponse {
+  repeated SecurityIssue issues = 1;
+  int32 files_analyzed = 2;
+  map<string, int32> issues_by_severity = 3;
+}
+
+message SecurityIssue {
+  string rule_id = 1;
+  string rule_name = 2;
+  Location location = 3;
+  string message = 4;
+  Diagnostic.Severity severity = 5;
+  string code_snippet = 6;
+  repeated string fix_suggestions = 7;
+  map<string, string> metadata = 8;
+}
+
+// Pattern detection
+
+message DetectPatternsRequest {
+  repeated PatternQuery patterns = 1;
+  repeated string file_patterns = 2;
+  int32 max_results_per_pattern = 3;
+}
+
+message PatternQuery {
+  string id = 1;
+  string name = 2;
+  string query = 3;  // Tree-sitter query
+  string language = 4;
+}
+
+message DetectPatternsResponse {
+  repeated PatternMatch matches = 1;
+  map<string, int32> matches_by_pattern = 2;
+}
+
+message PatternMatch {
+  string pattern_id = 1;
+  string pattern_name = 2;
+  Location location = 3;
+  string matched_text = 4;
+  map<string, string> captured_nodes = 5;  // Named captures from query
+}
+
+// Edit validation
+
+message ValidateEditRequest {
+  string file_path = 1;
+  repeated Edit edits = 2;
+  bool check_syntax = 3;
+  bool check_references = 4;
+  bool check_security = 5;
+}
+
+message Edit {
+  Location location = 1;
+  string old_text = 2;
+  string new_text = 3;
+}
+
+message ValidateEditResponse {
+  bool is_valid = 1;
+  repeated ValidationIssue issues = 2;
+  bool would_break_syntax = 3;
+  repeated string affected_symbols = 4;
+  repeated SecurityIssue security_risks = 5;
+}
+
+message ValidationIssue {
+  string message = 1;
+  Diagnostic.Severity severity = 2;
+  Location location = 3;
+  string issue_type = 4;
+}
+
+// Diagnostics
+
+message GetDiagnosticsRequest {
+  repeated string file_paths = 1;
+  repeated Diagnostic.Severity include_severities = 2;
+  repeated string include_sources = 3;
+}
+
+message GetDiagnosticsResponse {
+  repeated FileDiagnostics file_diagnostics = 1;
+  int32 total_diagnostics = 2;
+  map<string, int32> counts_by_severity = 3;
+}
+
+message FileDiagnostics {
+  string file_path = 1;
+  repeated Diagnostic diagnostics = 2;
+  google.protobuf.Timestamp last_analyzed = 3;
+}
+
+// Type information
+
+message GetTypeInfoRequest {
+  Location location = 1;
+  bool include_inheritance = 2;
+  bool include_implementations = 3;
+}
+
+message GetTypeInfoResponse {
+  TypeInfo type_info = 1;
+  bool found = 2;
+}
+
+message TypeInfo {
+  string type_name = 1;
+  string kind = 2;  // class, interface, primitive, etc.
+  repeated string base_types = 3;
+  repeated string interfaces = 4;
+  repeated Symbol members = 5;
+  string documentation = 6;
+  map<string, string> metadata = 7;
+}
+
+// Refactoring
+
+message SuggestRefactoringRequest {
+  Location location = 1;
+  repeated string refactoring_kinds = 2;  // extract_function, rename, etc.
+}
+
+message SuggestRefactoringResponse {
+  repeated RefactoringSuggestion suggestions = 1;
+}
+
+message RefactoringSuggestion {
+  string kind = 1;
+  string title = 2;
+  string description = 3;
+  repeated Edit edits = 4;
+  int32 priority = 5;
+  map<string, string> metadata = 6;
+}
+
+// Code metrics
+
+message GetCodeMetricsRequest {
+  repeated string file_patterns = 1;
+  repeated string metric_types = 2;  // complexity, loc, maintainability, etc.
+}
+
+message GetCodeMetricsResponse {
+  repeated FileMetrics file_metrics = 1;
+  AggregateMetrics aggregate = 2;
+}
+
+message FileMetrics {
+  string file_path = 1;
+  map<string, double> metrics = 2;
+  repeated FunctionMetrics function_metrics = 3;
+}
+
+message FunctionMetrics {
+  string function_name = 1;
+  Location location = 2;
+  map<string, double> metrics = 3;
+}
+
+message AggregateMetrics {
+  map<string, double> averages = 1;
+  map<string, double> totals = 2;
+  map<string, double> percentiles = 3;
+}
+
+// Streaming events
+
+message WatchFilesRequest {
+  repeated string file_patterns = 1;
+  repeated FileChangeKind change_kinds = 2;
+}
+
+enum FileChangeKind {
+  FILE_CHANGE_KIND_UNSPECIFIED = 0;
+  FILE_CHANGE_KIND_CREATED = 1;
+  FILE_CHANGE_KIND_MODIFIED = 2;
+  FILE_CHANGE_KIND_DELETED = 3;
+  FILE_CHANGE_KIND_RENAMED = 4;
+}
+
+message FileChangeEvent {
+  string file_path = 1;
+  FileChangeKind kind = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  string old_path = 4;  // For renames
+}
+
+message WatchSymbolsRequest {
+  repeated string file_patterns = 1;
+  repeated SymbolKind symbol_kinds = 2;
+  bool include_modifications = 3;
+}
+
+message SymbolChangeEvent {
+  enum ChangeKind {
+    CHANGE_KIND_UNSPECIFIED = 0;
+    CHANGE_KIND_ADDED = 1;
+    CHANGE_KIND_MODIFIED = 2;
+    CHANGE_KIND_DELETED = 3;
+    CHANGE_KIND_RENAMED = 4;
+  }
+  
+  Symbol symbol = 1;
+  ChangeKind kind = 2;
+  string old_name = 3;  // For renames
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message WatchDiagnosticsRequest {
+  repeated string file_patterns = 1;
+  repeated Diagnostic.Severity min_severity = 2;
+}
+
+message DiagnosticEvent {
+  string file_path = 1;
+  repeated Diagnostic added = 2;
+  repeated Diagnostic removed = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
