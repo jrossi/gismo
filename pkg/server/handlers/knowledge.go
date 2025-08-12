@@ -953,8 +953,7 @@ func (h *KnowledgeHandler) initResearchManager() error {
 		maxCost := 15.0
 		if costStr := os.Getenv("EXA_RESEARCH_MAX_COST"); costStr != "" {
 			var cost float64
-			fmt.Sscanf(costStr, "%f", &cost)
-			if cost > 0 {
+			if _, err := fmt.Sscanf(costStr, "%f", &cost); err == nil && cost > 0 {
 				maxCost = cost
 			}
 		}
@@ -1017,7 +1016,7 @@ func (h *KnowledgeHandler) CreateResearchTask(ctx context.Context, req *gismov1.
 		if h.researchManager != nil {
 			// Get max cost from manager (we can't access it directly, so use default)
 			if costStr := os.Getenv("EXA_RESEARCH_MAX_COST"); costStr != "" {
-				fmt.Sscanf(costStr, "%f", &maxCost)
+				_, _ = fmt.Sscanf(costStr, "%f", &maxCost)
 			}
 		}
 

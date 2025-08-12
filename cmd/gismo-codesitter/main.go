@@ -107,43 +107,63 @@ func main() {
 	// Parse command
 	switch os.Args[1] {
 	case "init":
-		initCmd.Parse(os.Args[2:])
+		if err := initCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing init flags: %v", err)
+		}
 		runInit(ctx, codeSitterClient)
 
 	case "query":
-		queryCmd.Parse(os.Args[2:])
+		if err := queryCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing query flags: %v", err)
+		}
 		runQuery(ctx, codeSitterClient)
 
 	case "find":
-		findCmd.Parse(os.Args[2:])
+		if err := findCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing find flags: %v", err)
+		}
 		runFind(ctx, codeSitterClient)
 
 	case "analyze":
-		analyzeCmd.Parse(os.Args[2:])
+		if err := analyzeCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing analyze flags: %v", err)
+		}
 		runAnalyze(ctx, codeSitterClient)
 
 	case "validate":
-		validateCmd.Parse(os.Args[2:])
+		if err := validateCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing validate flags: %v", err)
+		}
 		runValidate(ctx, codeSitterClient)
 
 	case "watch":
-		watchCmd.Parse(os.Args[2:])
+		if err := watchCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing watch flags: %v", err)
+		}
 		runWatch(ctx, codeSitterClient)
 
 	case "search":
-		searchCmd.Parse(os.Args[2:])
+		if err := searchCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing search flags: %v", err)
+		}
 		runSearch(ctx, codeSitterClient)
 
 	case "overview":
-		overviewCmd.Parse(os.Args[2:])
+		if err := overviewCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing overview flags: %v", err)
+		}
 		runOverview(ctx, codeSitterClient)
 
 	case "symbol":
-		symbolCmd.Parse(os.Args[2:])
+		if err := symbolCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing symbol flags: %v", err)
+		}
 		runSymbol(ctx, codeSitterClient)
 
 	case "refs":
-		refsCmd.Parse(os.Args[2:])
+		if err := refsCmd.Parse(os.Args[2:]); err != nil {
+			log.Fatalf("Error parsing refs flags: %v", err)
+		}
 		runRefs(ctx, codeSitterClient)
 
 	default:
@@ -508,13 +528,17 @@ func runSearch(ctx context.Context, client gismov1.CodeSitterClient) {
 	beforeFlag := searchCmd.Lookup("before")
 	before := 0
 	if beforeFlag != nil {
-		fmt.Sscanf(beforeFlag.Value.String(), "%d", &before)
+		if _, err := fmt.Sscanf(beforeFlag.Value.String(), "%d", &before); err != nil {
+			log.Printf("Warning: invalid 'before' value: %v", err)
+		}
 	}
 
 	afterFlag := searchCmd.Lookup("after")
 	after := 0
 	if afterFlag != nil {
-		fmt.Sscanf(afterFlag.Value.String(), "%d", &after)
+		if _, err := fmt.Sscanf(afterFlag.Value.String(), "%d", &after); err != nil {
+			log.Printf("Warning: invalid 'after' value: %v", err)
+		}
 	}
 
 	if pattern == "" {
@@ -560,7 +584,9 @@ func runOverview(ctx context.Context, client gismov1.CodeSitterClient) {
 	depthFlag := overviewCmd.Lookup("depth")
 	depth := 2
 	if depthFlag != nil {
-		fmt.Sscanf(depthFlag.Value.String(), "%d", &depth)
+		if _, err := fmt.Sscanf(depthFlag.Value.String(), "%d", &depth); err != nil {
+			log.Printf("Warning: invalid 'depth' value: %v", err)
+		}
 	}
 
 	if file == "" {
@@ -604,7 +630,9 @@ func runSymbol(ctx context.Context, client gismov1.CodeSitterClient) {
 	maxFlag := symbolCmd.Lookup("max")
 	maxResults := 50
 	if maxFlag != nil {
-		fmt.Sscanf(maxFlag.Value.String(), "%d", &maxResults)
+		if _, err := fmt.Sscanf(maxFlag.Value.String(), "%d", &maxResults); err != nil {
+			log.Printf("Warning: invalid 'max' value: %v", err)
+		}
 	}
 
 	if name == "" {

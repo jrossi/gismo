@@ -3,6 +3,7 @@ package codesitter
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -365,7 +366,9 @@ func (s *Server) startFileWatcher() error {
 			return nil
 		}
 		if info.IsDir() && !s.isExcluded(path) {
-			watcher.Add(path)
+			if err := watcher.Add(path); err != nil {
+				log.Printf("Failed to add watcher for %s: %v", path, err)
+			}
 		}
 		return nil
 	})

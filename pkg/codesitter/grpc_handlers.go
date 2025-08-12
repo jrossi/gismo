@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 
 	sitter "github.com/smacker/go-tree-sitter"
 	"google.golang.org/grpc/codes"
@@ -1201,29 +1200,4 @@ func abs(x int32) int32 {
 		return -x
 	}
 	return x
-}
-
-// syncMap provides a thread-safe string map
-type syncMap struct {
-	mu sync.RWMutex
-	m  map[string]interface{}
-}
-
-func (sm *syncMap) Get(key string) (interface{}, bool) {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-	v, ok := sm.m[key]
-	return v, ok
-}
-
-func (sm *syncMap) Set(key string, value interface{}) {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-	sm.m[key] = value
-}
-
-func (sm *syncMap) Delete(key string) {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-	delete(sm.m, key)
 }
