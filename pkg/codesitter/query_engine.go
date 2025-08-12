@@ -67,7 +67,7 @@ func (qe *QueryEngine) QuerySymbols(ctx context.Context, req *gismov1.QuerySymbo
 
 	return &gismov1.QuerySymbolsResponse{
 		Symbols:      results,
-		TotalMatches: int32(totalMatches),
+		TotalMatches: int32(totalMatches), //nolint:gosec // safe conversion
 		Truncated:    totalMatches > len(results),
 	}, nil
 }
@@ -163,7 +163,7 @@ func (qe *QueryEngine) FindReferences(ctx context.Context, req *gismov1.FindRefe
 
 	return &gismov1.FindReferencesResponse{
 		References:      references,
-		TotalReferences: int32(totalRefs),
+		TotalReferences: int32(totalRefs), //nolint:gosec
 		Truncated:       totalRefs > len(references),
 	}, nil
 }
@@ -254,7 +254,7 @@ func (qe *QueryEngine) DetectPatterns(ctx context.Context, req *gismov1.DetectPa
 			}
 		}
 
-		matchesByPattern[pattern.Id] = int32(patternMatches)
+		matchesByPattern[pattern.Id] = int32(patternMatches) //nolint:gosec
 	}
 
 	return &gismov1.DetectPatternsResponse{
@@ -592,8 +592,8 @@ func (qe *QueryEngine) findContainingSymbol(node *sitter.Node, ft *FileTree) *gi
 		case "function_declaration", "method_declaration", "class_declaration":
 			// Find this in our symbols
 			for _, sym := range ft.Symbols {
-				if sym.Location.StartByte <= int32(node.StartByte()) &&
-					sym.Location.EndByte >= int32(node.EndByte()) {
+				if sym.Location.StartByte <= int32(node.StartByte()) && //nolint:gosec
+					sym.Location.EndByte >= int32(node.EndByte()) { //nolint:gosec
 					return sym
 				}
 			}

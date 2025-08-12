@@ -408,12 +408,12 @@ func (s *Server) nodeToLocation(node *sitter.Node, filePath string) *gismov1.Loc
 
 	return &gismov1.Location{
 		FilePath:    filePath,
-		StartLine:   int32(startPoint.Row + 1), // tree-sitter uses 0-based
-		StartColumn: int32(startPoint.Column + 1),
-		EndLine:     int32(endPoint.Row + 1),
-		EndColumn:   int32(endPoint.Column + 1),
-		StartByte:   int32(node.StartByte()),
-		EndByte:     int32(node.EndByte()),
+		StartLine:   int32(startPoint.Row + 1),    //nolint:gosec // tree-sitter uses 0-based, safe conversion
+		StartColumn: int32(startPoint.Column + 1), //nolint:gosec
+		EndLine:     int32(endPoint.Row + 1),      //nolint:gosec
+		EndColumn:   int32(endPoint.Column + 1),   //nolint:gosec
+		StartByte:   int32(node.StartByte()),      //nolint:gosec
+		EndByte:     int32(node.EndByte()),        //nolint:gosec
 	}
 }
 

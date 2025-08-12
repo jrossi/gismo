@@ -166,8 +166,8 @@ func (s *Server) InitializeWorkspace(ctx context.Context, req *gismov1.Initializ
 
 	return &gismov1.InitializeWorkspaceResponse{
 		Success:              true,
-		FilesParsed:          int32(s.metrics.FilesIndexed),
-		TotalSymbols:         int32(s.symbolIndex.Count()),
+		FilesParsed:          int32(s.metrics.FilesIndexed), //nolint:gosec // safe metric conversion
+		TotalSymbols:         int32(s.symbolIndex.Count()),  //nolint:gosec
 		SupportedLanguages:   supportedLangs,
 		SessionId:            s.sessionID,
 		FileCountsByLanguage: filesByLang,

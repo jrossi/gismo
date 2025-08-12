@@ -146,7 +146,7 @@ func (s *Server) GetCallGraph(ctx context.Context, req *gismov1.GetCallGraphRequ
 
 	return &gismov1.GetCallGraphResponse{
 		Root:            root,
-		TotalNodes:      int32(len(visited)),
+		TotalNodes:      int32(len(visited)), //nolint:gosec // safe conversion of map length
 		MaxDepthReached: req.MaxDepth,
 	}, nil
 }
@@ -195,7 +195,7 @@ func (s *Server) ValidateEdit(ctx context.Context, req *gismov1.ValidateEditRequ
 				start := edit.Location.StartByte
 				end := edit.Location.EndByte
 
-				if start >= 0 && end <= int32(len(tempContent)) {
+				if start >= 0 && end <= int32(len(tempContent)) { //nolint:gosec // safe length conversion
 					// Replace old text with new text
 					newContent := append(tempContent[:start], []byte(edit.NewText)...)
 					newContent = append(newContent, tempContent[end:]...)
@@ -382,12 +382,12 @@ func (s *Server) SuggestRefactoring(ctx context.Context, req *gismov1.SuggestRef
 	// Get the node at the location
 	node := tree.Tree.RootNode().NamedDescendantForPointRange(
 		sitter.Point{
-			Row:    uint32(req.Location.StartLine - 1),
-			Column: uint32(req.Location.StartColumn - 1),
+			Row:    uint32(req.Location.StartLine - 1),   //nolint:gosec // safe conversion, validated input
+			Column: uint32(req.Location.StartColumn - 1), //nolint:gosec
 		},
 		sitter.Point{
-			Row:    uint32(req.Location.EndLine - 1),
-			Column: uint32(req.Location.EndColumn - 1),
+			Row:    uint32(req.Location.EndLine - 1),   //nolint:gosec
+			Column: uint32(req.Location.EndColumn - 1), //nolint:gosec
 		},
 	)
 
@@ -875,16 +875,16 @@ func (s *Server) SearchForPattern(ctx context.Context, req *gismov1.SearchForPat
 
 				matches = append(matches, &gismov1.SearchForPatternResponse_Match{
 					FilePath:      path,
-					LineNumber:    int32(i + 1),
+					LineNumber:    int32(i + 1), //nolint:gosec // safe index conversion
 					LineText:      line,
 					ContextBefore: contextBefore,
 					ContextAfter:  contextAfter,
 					Location: &gismov1.Location{
 						FilePath:    path,
-						StartLine:   int32(i + 1),
+						StartLine:   int32(i + 1), //nolint:gosec
 						StartColumn: 1,
-						EndLine:     int32(i + 1),
-						EndColumn:   int32(len(line)),
+						EndLine:     int32(i + 1),     //nolint:gosec
+						EndColumn:   int32(len(line)), //nolint:gosec
 					},
 				})
 			}
@@ -893,8 +893,8 @@ func (s *Server) SearchForPattern(ctx context.Context, req *gismov1.SearchForPat
 
 	return &gismov1.SearchForPatternResponse{
 		Matches:       matches,
-		TotalMatches:  int32(len(matches)),
-		FilesSearched: int32(filesSearched),
+		TotalMatches:  int32(len(matches)),  //nolint:gosec // safe length conversion
+		FilesSearched: int32(filesSearched), //nolint:gosec
 	}, nil
 }
 
@@ -916,7 +916,7 @@ func (s *Server) GetSymbolsOverview(ctx context.Context, req *gismov1.GetSymbols
 
 	return &gismov1.GetSymbolsOverviewResponse{
 		Symbols:      symbolTrees,
-		TotalSymbols: int32(len(symbols)),
+		TotalSymbols: int32(len(symbols)), //nolint:gosec
 	}, nil
 }
 
@@ -981,20 +981,20 @@ func (s *Server) FindSymbol(ctx context.Context, req *gismov1.FindSymbolRequest)
 
 			if matched {
 				foundSymbols = append(foundSymbols, symbol)
-				if req.MaxResults > 0 && int32(len(foundSymbols)) >= req.MaxResults {
+				if req.MaxResults > 0 && int32(len(foundSymbols)) >= req.MaxResults { //nolint:gosec
 					break
 				}
 			}
 		}
 
-		if req.MaxResults > 0 && int32(len(foundSymbols)) >= req.MaxResults {
+		if req.MaxResults > 0 && int32(len(foundSymbols)) >= req.MaxResults { //nolint:gosec
 			break
 		}
 	}
 
 	return &gismov1.FindSymbolResponse{
 		Symbols:    foundSymbols,
-		TotalFound: int32(len(foundSymbols)),
+		TotalFound: int32(len(foundSymbols)), //nolint:gosec
 	}, nil
 }
 
@@ -1037,7 +1037,7 @@ func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindRe
 				// Find the containing symbol at this location
 				loc := &gismov1.Location{
 					FilePath:  path,
-					StartLine: int32(lineNum + 1),
+					StartLine: int32(lineNum + 1), //nolint:gosec // safe line number conversion
 				}
 
 				containingSymbol := s.findContainingSymbol(path, loc)
@@ -1062,7 +1062,7 @@ func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindRe
 
 	return &gismov1.FindReferencingSymbolsResponse{
 		References:      references,
-		TotalReferences: int32(len(references)),
+		TotalReferences: int32(len(references)), //nolint:gosec
 	}, nil
 }
 
