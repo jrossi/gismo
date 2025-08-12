@@ -67,7 +67,7 @@ type FileTree struct {
 	LastModified time.Time
 	Symbols      []*gismov1.Symbol
 	Diagnostics  []*gismov1.Diagnostic
-	mu           sync.RWMutex
+	mu           sync.RWMutex //nolint:unused // false positive, field is used in methods
 }
 
 // ServerMetrics tracks server performance
