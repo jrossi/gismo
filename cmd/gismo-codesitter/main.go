@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
+	"github.com/jrossi/gismo/pkg/socket"
 )
 
 var (
@@ -154,24 +154,8 @@ func main() {
 }
 
 func connectToServer(ctx context.Context) (*grpc.ClientConn, error) {
-	// Build the runtime directory path same as server
-	var socketDir string
-	if runtime := os.Getenv("XDG_RUNTIME_DIR"); runtime != "" {
-		socketDir = filepath.Join(runtime, "gismo")
-	} else {
-		socketDir = filepath.Join(os.TempDir(), fmt.Sprintf("gismo-%d", os.Getuid()))
-	}
-	socketPath := filepath.Join(socketDir, "gismo.sock")
-
-	// Check if socket exists
-	if _, err := os.Stat(socketPath); err == nil {
-		return grpc.DialContext(ctx, "unix://"+socketPath,
-			grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	// Fall back to TCP connection
-	return grpc.DialContext(ctx, "localhost:50051",
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Use common socket library to connect
+	return socket.ConnectWithFallback(ctx, "localhost:50051")
 }
 
 func runInit(ctx context.Context, client gismov1.CodeSitterClient) {

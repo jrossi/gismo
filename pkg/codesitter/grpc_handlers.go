@@ -893,9 +893,9 @@ func (s *Server) SearchForPattern(ctx context.Context, req *gismov1.SearchForPat
 	}
 
 	return &gismov1.SearchForPatternResponse{
-		Matches:        matches,
-		TotalMatches:   int32(len(matches)),
-		FilesSearched:  int32(filesSearched),
+		Matches:       matches,
+		TotalMatches:  int32(len(matches)),
+		FilesSearched: int32(filesSearched),
 	}, nil
 }
 
@@ -911,7 +911,7 @@ func (s *Server) GetSymbolsOverview(ctx context.Context, req *gismov1.GetSymbols
 
 	// Extract all symbols from the file
 	symbols := s.extractSymbols(tree)
-	
+
 	// Build symbol tree
 	symbolTrees := s.buildSymbolTree(symbols, req.IncludeKinds, req.MaxDepth)
 
@@ -927,10 +927,10 @@ func (s *Server) FindSymbol(ctx context.Context, req *gismov1.FindSymbolRequest)
 	defer s.mu.RUnlock()
 
 	foundSymbols := []*gismov1.Symbol{}
-	
+
 	// Parse the name pattern (e.g., "MyClass/myMethod" or just "myMethod")
 	patternParts := strings.Split(req.NamePattern, "/")
-	
+
 	// Search through all symbols in the index
 	for _, symbols := range s.symbolIndex.byName {
 		for _, symbol := range symbols {
@@ -987,7 +987,7 @@ func (s *Server) FindSymbol(ctx context.Context, req *gismov1.FindSymbolRequest)
 				}
 			}
 		}
-		
+
 		if req.MaxResults > 0 && int32(len(foundSymbols)) >= req.MaxResults {
 			break
 		}
@@ -1017,7 +1017,7 @@ func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindRe
 
 	if targetSymbol == nil {
 		return &gismov1.FindReferencingSymbolsResponse{
-			References:       references,
+			References:      references,
 			TotalReferences: 0,
 		}, nil
 	}
@@ -1032,7 +1032,7 @@ func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindRe
 		// Search for the symbol name in the file content
 		content := string(tree.Content)
 		lines := strings.Split(content, "\n")
-		
+
 		for lineNum, line := range lines {
 			if strings.Contains(line, targetSymbol.Name) {
 				// Find the containing symbol at this location
@@ -1040,9 +1040,9 @@ func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindRe
 					FilePath:  path,
 					StartLine: int32(lineNum + 1),
 				}
-				
+
 				containingSymbol := s.findContainingSymbol(path, loc)
-				
+
 				// Determine reference kind
 				kind := gismov1.ReferenceKind_REFERENCE_KIND_READ
 				if strings.Contains(line, targetSymbol.Name+"(") {
@@ -1052,8 +1052,8 @@ func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindRe
 				}
 
 				references = append(references, &gismov1.FindReferencingSymbolsResponse_ReferencingSymbol{
-					ContainingSymbol:   containingSymbol,
-					ReferenceLocation:  loc,
+					ContainingSymbol:  containingSymbol,
+					ReferenceLocation: loc,
 					ReferenceText:     strings.TrimSpace(line),
 					Kind:              kind,
 				})
@@ -1062,7 +1062,7 @@ func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindRe
 	}
 
 	return &gismov1.FindReferencingSymbolsResponse{
-		References:       references,
+		References:      references,
 		TotalReferences: int32(len(references)),
 	}, nil
 }
@@ -1070,7 +1070,7 @@ func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindRe
 // Helper: Build hierarchical symbol tree
 func (s *Server) buildSymbolTree(symbols []*gismov1.Symbol, includeKinds []gismov1.SymbolKind, maxDepth int32) []*gismov1.GetSymbolsOverviewResponse_SymbolTree {
 	trees := []*gismov1.GetSymbolsOverviewResponse_SymbolTree{}
-	
+
 	// First pass: create all tree nodes
 	nodeMap := make(map[string]*gismov1.GetSymbolsOverviewResponse_SymbolTree)
 	for _, symbol := range symbols {
@@ -1152,7 +1152,7 @@ func (s *Server) findSymbolAtLocation(location *gismov1.Location) *gismov1.Symbo
 
 	for _, symbol := range symbols {
 		if symbol.Location.StartLine <= location.StartLine &&
-		   symbol.Location.EndLine >= location.StartLine {
+			symbol.Location.EndLine >= location.StartLine {
 			return symbol
 		}
 	}
@@ -1170,10 +1170,10 @@ func (s *Server) findContainingSymbol(filePath string, location *gismov1.Locatio
 	for _, symbol := range symbols {
 		// Check if location is within symbol bounds
 		if symbol.Location.StartLine <= location.StartLine &&
-		   symbol.Location.EndLine >= location.StartLine {
+			symbol.Location.EndLine >= location.StartLine {
 			// Keep the smallest containing symbol
 			if bestMatch == nil ||
-			   (symbol.Location.EndLine - symbol.Location.StartLine) < (bestMatch.Location.EndLine - bestMatch.Location.StartLine) {
+				(symbol.Location.EndLine-symbol.Location.StartLine) < (bestMatch.Location.EndLine-bestMatch.Location.StartLine) {
 				bestMatch = symbol
 			}
 		}
