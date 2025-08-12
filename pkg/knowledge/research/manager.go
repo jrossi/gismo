@@ -397,7 +397,7 @@ func (m *ResearchManager) Shutdown() {
 func (m *ResearchManager) GetActiveTasks(ctx context.Context, projectContext string) ([]map[string]interface{}, error) {
 	query := `
 		SELECT id, instructions, model, status, progress_message, 
-		       EXTRACT(EPOCH FROM (NOW() - created_at)) as elapsed_seconds,
+		       EXTRACT(EPOCH FROM (CAST(NOW() AS TIMESTAMP) - created_at)) as elapsed_seconds,
 		       estimated_cost, retry_count
 		FROM exa_research_tasks
 		WHERE status IN ('pending', 'running', 'polling')
