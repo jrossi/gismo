@@ -21,6 +21,12 @@ service CodeSitter {
   rpc GetSymbolDefinition(GetSymbolDefinitionRequest) returns (GetSymbolDefinitionResponse);
   rpc GetCallGraph(GetCallGraphRequest) returns (GetCallGraphResponse);
   
+  // NEW: Methods matching MCP tools exactly
+  rpc SearchForPattern(SearchForPatternRequest) returns (SearchForPatternResponse);
+  rpc GetSymbolsOverview(GetSymbolsOverviewRequest) returns (GetSymbolsOverviewResponse);
+  rpc FindSymbol(FindSymbolRequest) returns (FindSymbolResponse);
+  rpc FindReferencingSymbols(FindReferencingSymbolsRequest) returns (FindReferencingSymbolsResponse);
+  
   // Code analysis
   rpc AnalyzeSecurity(AnalyzeSecurityRequest) returns (AnalyzeSecurityResponse);
   rpc DetectPatterns(DetectPatternsRequest) returns (DetectPatternsResponse);
@@ -413,6 +419,79 @@ message AggregateMetrics {
   map<string, double> averages = 1;
   map<string, double> totals = 2;
   map<string, double> percentiles = 3;
+}
+
+// NEW: Search for pattern messages
+message SearchForPatternRequest {
+  string pattern = 1;  // Regex or literal pattern to search for
+  repeated string file_patterns = 2;  // File globs to search in
+  bool use_regex = 3;  // true for regex, false for literal
+  int32 context_lines_before = 4;
+  int32 context_lines_after = 5;
+  bool case_sensitive = 6;
+}
+
+message SearchForPatternResponse {
+  message Match {
+    string file_path = 1;
+    int32 line_number = 2;
+    string line_text = 3;
+    repeated string context_before = 4;
+    repeated string context_after = 5;
+    Location location = 6;
+  }
+  repeated Match matches = 1;
+  int32 total_matches = 2;
+  int32 files_searched = 3;
+}
+
+// NEW: Get symbols overview messages
+message GetSymbolsOverviewRequest {
+  string file_path = 1;
+  int32 max_depth = 2;  // How deep to traverse nested symbols
+  repeated SymbolKind include_kinds = 3;  // Filter by symbol kinds
+}
+
+message GetSymbolsOverviewResponse {
+  message SymbolTree {
+    Symbol symbol = 1;
+    repeated SymbolTree children = 2;
+  }
+  repeated SymbolTree symbols = 1;
+  int32 total_symbols = 2;
+}
+
+// NEW: Find symbol messages
+message FindSymbolRequest {
+  string name_pattern = 1;  // Name or path pattern like "class/method"
+  string file_path = 2;  // Optional: limit to specific file
+  bool substring_matching = 3;
+  repeated SymbolKind include_kinds = 4;
+  int32 max_results = 5;
+}
+
+message FindSymbolResponse {
+  repeated Symbol symbols = 1;
+  int32 total_found = 2;
+}
+
+// NEW: Find referencing symbols messages
+message FindReferencingSymbolsRequest {
+  string symbol_name = 1;
+  Location symbol_location = 2;  // Location of the symbol to find references for
+  repeated string file_patterns = 3;  // Optional: limit search to these files
+  bool include_declarations = 4;
+}
+
+message FindReferencingSymbolsResponse {
+  message ReferencingSymbol {
+    Symbol containing_symbol = 1;  // The symbol that contains the reference
+    Location reference_location = 2;  // Where the reference occurs
+    string reference_text = 3;  // The actual text of the reference
+    ReferenceKind kind = 4;
+  }
+  repeated ReferencingSymbol references = 1;
+  int32 total_references = 2;
 }
 
 // Streaming events

@@ -3,6 +3,7 @@ package codesitter
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -827,6 +828,372 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// SearchForPattern searches for patterns in code (AST-aware grep)
+func (s *Server) SearchForPattern(ctx context.Context, req *gismov1.SearchForPatternRequest) (*gismov1.SearchForPatternResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	matches := []*gismov1.SearchForPatternResponse_Match{}
+	filesSearched := 0
+
+	// Search through all parsed files
+	for path, tree := range s.trees {
+		// Check if file matches patterns
+		if len(req.FilePatterns) > 0 && !s.matchesPatterns(path, req.FilePatterns) {
+			continue
+		}
+		filesSearched++
+
+		// Search in file content
+		lines := strings.Split(string(tree.Content), "\n")
+		for i, line := range lines {
+			matched := false
+			if req.UseRegex {
+				if re, err := regexp.Compile(req.Pattern); err == nil {
+					matched = re.MatchString(line)
+				}
+			} else {
+				if req.CaseSensitive {
+					matched = strings.Contains(line, req.Pattern)
+				} else {
+					matched = strings.Contains(strings.ToLower(line), strings.ToLower(req.Pattern))
+				}
+			}
+
+			if matched {
+				// Collect context lines
+				contextBefore := []string{}
+				for j := max(0, i-int(req.ContextLinesBefore)); j < i; j++ {
+					contextBefore = append(contextBefore, lines[j])
+				}
+
+				contextAfter := []string{}
+				for j := i + 1; j <= min(len(lines)-1, i+int(req.ContextLinesAfter)); j++ {
+					contextAfter = append(contextAfter, lines[j])
+				}
+
+				matches = append(matches, &gismov1.SearchForPatternResponse_Match{
+					FilePath:      path,
+					LineNumber:    int32(i + 1),
+					LineText:      line,
+					ContextBefore: contextBefore,
+					ContextAfter:  contextAfter,
+					Location: &gismov1.Location{
+						FilePath:    path,
+						StartLine:   int32(i + 1),
+						StartColumn: 1,
+						EndLine:     int32(i + 1),
+						EndColumn:   int32(len(line)),
+					},
+				})
+			}
+		}
+	}
+
+	return &gismov1.SearchForPatternResponse{
+		Matches:        matches,
+		TotalMatches:   int32(len(matches)),
+		FilesSearched:  int32(filesSearched),
+	}, nil
+}
+
+// GetSymbolsOverview returns a hierarchical view of symbols in a file
+func (s *Server) GetSymbolsOverview(ctx context.Context, req *gismov1.GetSymbolsOverviewRequest) (*gismov1.GetSymbolsOverviewResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	tree, exists := s.trees[req.FilePath]
+	if !exists {
+		return nil, fmt.Errorf("file not found: %s", req.FilePath)
+	}
+
+	// Extract all symbols from the file
+	symbols := s.extractSymbols(tree)
+	
+	// Build symbol tree
+	symbolTrees := s.buildSymbolTree(symbols, req.IncludeKinds, req.MaxDepth)
+
+	return &gismov1.GetSymbolsOverviewResponse{
+		Symbols:      symbolTrees,
+		TotalSymbols: int32(len(symbols)),
+	}, nil
+}
+
+// FindSymbol finds symbols by name pattern (supports path patterns like "class/method")
+func (s *Server) FindSymbol(ctx context.Context, req *gismov1.FindSymbolRequest) (*gismov1.FindSymbolResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	foundSymbols := []*gismov1.Symbol{}
+	
+	// Parse the name pattern (e.g., "MyClass/myMethod" or just "myMethod")
+	patternParts := strings.Split(req.NamePattern, "/")
+	
+	// Search through all symbols in the index
+	for _, symbols := range s.symbolIndex.byName {
+		for _, symbol := range symbols {
+			// Check file path filter if specified
+			if req.FilePath != "" && symbol.Location.FilePath != req.FilePath {
+				continue
+			}
+
+			// Check symbol kind filter
+			if len(req.IncludeKinds) > 0 {
+				found := false
+				for _, kind := range req.IncludeKinds {
+					if symbol.Kind == kind {
+						found = true
+						break
+					}
+				}
+				if !found {
+					continue
+				}
+			}
+
+			// Match against pattern
+			matched := false
+			if len(patternParts) == 1 {
+				// Simple name matching
+				if req.SubstringMatching {
+					matched = strings.Contains(symbol.Name, patternParts[0])
+				} else {
+					matched = symbol.Name == patternParts[0]
+				}
+			} else {
+				// Path pattern matching (e.g., "class/method")
+				// Check if symbol has the right parent
+				if symbol.ParentSymbol != "" {
+					parentParts := strings.Split(symbol.ParentSymbol, "/")
+					if len(parentParts) > 0 {
+						lastParent := parentParts[len(parentParts)-1]
+						if lastParent == patternParts[0] {
+							if req.SubstringMatching {
+								matched = strings.Contains(symbol.Name, patternParts[1])
+							} else {
+								matched = symbol.Name == patternParts[1]
+							}
+						}
+					}
+				}
+			}
+
+			if matched {
+				foundSymbols = append(foundSymbols, symbol)
+				if req.MaxResults > 0 && int32(len(foundSymbols)) >= req.MaxResults {
+					break
+				}
+			}
+		}
+		
+		if req.MaxResults > 0 && int32(len(foundSymbols)) >= req.MaxResults {
+			break
+		}
+	}
+
+	return &gismov1.FindSymbolResponse{
+		Symbols:    foundSymbols,
+		TotalFound: int32(len(foundSymbols)),
+	}, nil
+}
+
+// FindReferencingSymbols finds all symbols that reference a given symbol
+func (s *Server) FindReferencingSymbols(ctx context.Context, req *gismov1.FindReferencingSymbolsRequest) (*gismov1.FindReferencingSymbolsResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	references := []*gismov1.FindReferencingSymbolsResponse_ReferencingSymbol{}
+
+	// Find the target symbol
+	targetSymbol := s.findSymbolAtLocation(req.SymbolLocation)
+	if targetSymbol == nil {
+		// Fall back to searching by name
+		if symbols, ok := s.symbolIndex.byName[req.SymbolName]; ok && len(symbols) > 0 {
+			targetSymbol = symbols[0]
+		}
+	}
+
+	if targetSymbol == nil {
+		return &gismov1.FindReferencingSymbolsResponse{
+			References:       references,
+			TotalReferences: 0,
+		}, nil
+	}
+
+	// Search for references in all files
+	for path, tree := range s.trees {
+		// Check file pattern filter
+		if len(req.FilePatterns) > 0 && !s.matchesPatterns(path, req.FilePatterns) {
+			continue
+		}
+
+		// Search for the symbol name in the file content
+		content := string(tree.Content)
+		lines := strings.Split(content, "\n")
+		
+		for lineNum, line := range lines {
+			if strings.Contains(line, targetSymbol.Name) {
+				// Find the containing symbol at this location
+				loc := &gismov1.Location{
+					FilePath:  path,
+					StartLine: int32(lineNum + 1),
+				}
+				
+				containingSymbol := s.findContainingSymbol(path, loc)
+				
+				// Determine reference kind
+				kind := gismov1.ReferenceKind_REFERENCE_KIND_READ
+				if strings.Contains(line, targetSymbol.Name+"(") {
+					kind = gismov1.ReferenceKind_REFERENCE_KIND_CALL
+				} else if strings.Contains(line, targetSymbol.Name+" =") || strings.Contains(line, targetSymbol.Name+" :=") {
+					kind = gismov1.ReferenceKind_REFERENCE_KIND_WRITE
+				}
+
+				references = append(references, &gismov1.FindReferencingSymbolsResponse_ReferencingSymbol{
+					ContainingSymbol:   containingSymbol,
+					ReferenceLocation:  loc,
+					ReferenceText:     strings.TrimSpace(line),
+					Kind:              kind,
+				})
+			}
+		}
+	}
+
+	return &gismov1.FindReferencingSymbolsResponse{
+		References:       references,
+		TotalReferences: int32(len(references)),
+	}, nil
+}
+
+// Helper: Build hierarchical symbol tree
+func (s *Server) buildSymbolTree(symbols []*gismov1.Symbol, includeKinds []gismov1.SymbolKind, maxDepth int32) []*gismov1.GetSymbolsOverviewResponse_SymbolTree {
+	trees := []*gismov1.GetSymbolsOverviewResponse_SymbolTree{}
+	
+	// First pass: create all tree nodes
+	nodeMap := make(map[string]*gismov1.GetSymbolsOverviewResponse_SymbolTree)
+	for _, symbol := range symbols {
+		// Filter by kind if specified
+		if len(includeKinds) > 0 {
+			found := false
+			for _, kind := range includeKinds {
+				if symbol.Kind == kind {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+
+		node := &gismov1.GetSymbolsOverviewResponse_SymbolTree{
+			Symbol:   symbol,
+			Children: []*gismov1.GetSymbolsOverviewResponse_SymbolTree{},
+		}
+		nodeMap[symbol.Name] = node
+	}
+
+	// Second pass: build hierarchy
+	for _, symbol := range symbols {
+		node, exists := nodeMap[symbol.Name]
+		if !exists {
+			continue
+		}
+
+		if symbol.ParentSymbol == "" {
+			// Top-level symbol
+			trees = append(trees, node)
+		} else {
+			// Find parent and add as child
+			if parent, ok := nodeMap[symbol.ParentSymbol]; ok {
+				parent.Children = append(parent.Children, node)
+			} else {
+				// Parent not in filtered list, add as top-level
+				trees = append(trees, node)
+			}
+		}
+	}
+
+	// Apply max depth if specified
+	if maxDepth > 0 {
+		trees = s.pruneTreeDepth(trees, 0, maxDepth)
+	}
+
+	return trees
+}
+
+// Helper: Prune tree to max depth
+func (s *Server) pruneTreeDepth(trees []*gismov1.GetSymbolsOverviewResponse_SymbolTree, currentDepth, maxDepth int32) []*gismov1.GetSymbolsOverviewResponse_SymbolTree {
+	if currentDepth >= maxDepth {
+		for _, tree := range trees {
+			tree.Children = nil
+		}
+		return trees
+	}
+
+	for _, tree := range trees {
+		tree.Children = s.pruneTreeDepth(tree.Children, currentDepth+1, maxDepth)
+	}
+	return trees
+}
+
+// Helper: Find symbol at a specific location
+func (s *Server) findSymbolAtLocation(location *gismov1.Location) *gismov1.Symbol {
+	if location == nil {
+		return nil
+	}
+
+	symbols, ok := s.symbolIndex.byFile[location.FilePath]
+	if !ok {
+		return nil
+	}
+
+	for _, symbol := range symbols {
+		if symbol.Location.StartLine <= location.StartLine &&
+		   symbol.Location.EndLine >= location.StartLine {
+			return symbol
+		}
+	}
+	return nil
+}
+
+// Helper: Find containing symbol for a location
+func (s *Server) findContainingSymbol(filePath string, location *gismov1.Location) *gismov1.Symbol {
+	symbols, ok := s.symbolIndex.byFile[filePath]
+	if !ok {
+		return nil
+	}
+
+	var bestMatch *gismov1.Symbol
+	for _, symbol := range symbols {
+		// Check if location is within symbol bounds
+		if symbol.Location.StartLine <= location.StartLine &&
+		   symbol.Location.EndLine >= location.StartLine {
+			// Keep the smallest containing symbol
+			if bestMatch == nil ||
+			   (symbol.Location.EndLine - symbol.Location.StartLine) < (bestMatch.Location.EndLine - bestMatch.Location.StartLine) {
+				bestMatch = symbol
+			}
+		}
+	}
+	return bestMatch
+}
+
+// Helper: min/max functions
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func abs(x int32) int32 {

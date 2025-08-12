@@ -23,6 +23,10 @@ var (
 	analyzeCmd  = flag.NewFlagSet("analyze", flag.ExitOnError)
 	validateCmd = flag.NewFlagSet("validate", flag.ExitOnError)
 	watchCmd    = flag.NewFlagSet("watch", flag.ExitOnError)
+	searchCmd   = flag.NewFlagSet("search", flag.ExitOnError)
+	overviewCmd = flag.NewFlagSet("overview", flag.ExitOnError)
+	symbolCmd   = flag.NewFlagSet("symbol", flag.ExitOnError)
+	refsCmd     = flag.NewFlagSet("refs", flag.ExitOnError)
 
 	// Common flags
 	workspace = ""
@@ -58,6 +62,29 @@ func init() {
 	watchCmd.String("files", "", "Watch file patterns")
 	watchCmd.String("symbols", "", "Watch symbol changes")
 	watchCmd.Bool("diagnostics", false, "Watch diagnostics")
+
+	// Search command flags (search_for_pattern)
+	searchCmd.String("pattern", "", "Pattern to search for")
+	searchCmd.String("files", "", "File patterns to search in")
+	searchCmd.Bool("regex", false, "Use regex pattern")
+	searchCmd.Bool("case", false, "Case sensitive search")
+	searchCmd.Int("before", 0, "Lines of context before")
+	searchCmd.Int("after", 0, "Lines of context after")
+
+	// Overview command flags (get_symbols_overview)
+	overviewCmd.String("file", "", "File to get symbols overview for")
+	overviewCmd.Int("depth", 2, "Max depth of symbol tree")
+
+	// Symbol command flags (find_symbol)
+	symbolCmd.String("name", "", "Symbol name pattern (e.g., 'MyClass/myMethod')")
+	symbolCmd.String("file", "", "Limit to specific file")
+	symbolCmd.Bool("substring", false, "Use substring matching")
+	symbolCmd.Int("max", 50, "Maximum results")
+
+	// Refs command flags (find_referencing_symbols)
+	refsCmd.String("symbol", "", "Symbol name to find references for")
+	refsCmd.String("file", "", "File containing the symbol")
+	refsCmd.String("patterns", "", "File patterns to search in")
 }
 
 func main() {
@@ -103,6 +130,22 @@ func main() {
 		watchCmd.Parse(os.Args[2:])
 		runWatch(ctx, codeSitterClient)
 
+	case "search":
+		searchCmd.Parse(os.Args[2:])
+		runSearch(ctx, codeSitterClient)
+
+	case "overview":
+		overviewCmd.Parse(os.Args[2:])
+		runOverview(ctx, codeSitterClient)
+
+	case "symbol":
+		symbolCmd.Parse(os.Args[2:])
+		runSymbol(ctx, codeSitterClient)
+
+	case "refs":
+		refsCmd.Parse(os.Args[2:])
+		runRefs(ctx, codeSitterClient)
+
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		printUsage()
@@ -111,11 +154,14 @@ func main() {
 }
 
 func connectToServer(ctx context.Context) (*grpc.ClientConn, error) {
-	// Try to connect to Unix socket first
-	socketPath := filepath.Join(os.TempDir(), "gismo.sock")
+	// Build the runtime directory path same as server
+	var socketDir string
 	if runtime := os.Getenv("XDG_RUNTIME_DIR"); runtime != "" {
-		socketPath = filepath.Join(runtime, "gismo.sock")
+		socketDir = filepath.Join(runtime, "gismo")
+	} else {
+		socketDir = filepath.Join(os.TempDir(), fmt.Sprintf("gismo-%d", os.Getuid()))
 	}
+	socketPath := filepath.Join(socketDir, "gismo.sock")
 
 	// Check if socket exists
 	if _, err := os.Stat(socketPath); err == nil {
@@ -451,6 +497,10 @@ func printUsage() {
 	fmt.Println("  analyze     Analyze code for security and metrics")
 	fmt.Println("  validate    Validate code edits")
 	fmt.Println("  watch       Watch for real-time changes")
+	fmt.Println("  search      Search for patterns in code (AST-aware grep)")
+	fmt.Println("  overview    Get hierarchical overview of symbols in a file")
+	fmt.Println("  symbol      Find symbols by name pattern")
+	fmt.Println("  refs        Find all references to a symbol")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  gismo-codesitter init -workspace /path/to/code")
@@ -458,4 +508,194 @@ func printUsage() {
 	fmt.Println("  gismo-codesitter find -definition MyFunction")
 	fmt.Println("  gismo-codesitter analyze -security all")
 	fmt.Println("  gismo-codesitter watch -files '*.go'")
+}
+
+func runSearch(ctx context.Context, client gismov1.CodeSitterClient) {
+	pattern := searchCmd.Lookup("pattern").Value.String()
+	files := searchCmd.Lookup("files").Value.String()
+
+	// Use the values that were already parsed
+	useRegexFlag := searchCmd.Lookup("regex")
+	useRegex := useRegexFlag != nil && useRegexFlag.Value.String() == "true"
+
+	caseSensitiveFlag := searchCmd.Lookup("case")
+	caseSensitive := caseSensitiveFlag != nil && caseSensitiveFlag.Value.String() == "true"
+
+	beforeFlag := searchCmd.Lookup("before")
+	before := 0
+	if beforeFlag != nil {
+		fmt.Sscanf(beforeFlag.Value.String(), "%d", &before)
+	}
+
+	afterFlag := searchCmd.Lookup("after")
+	after := 0
+	if afterFlag != nil {
+		fmt.Sscanf(afterFlag.Value.String(), "%d", &after)
+	}
+
+	if pattern == "" {
+		log.Fatal("Pattern is required")
+	}
+
+	var filePatterns []string
+	if files != "" {
+		filePatterns = strings.Split(files, ",")
+	}
+
+	resp, err := client.SearchForPattern(ctx, &gismov1.SearchForPatternRequest{
+		Pattern:            pattern,
+		FilePatterns:       filePatterns,
+		UseRegex:           useRegex,
+		CaseSensitive:      caseSensitive,
+		ContextLinesBefore: int32(before),
+		ContextLinesAfter:  int32(after),
+	})
+	if err != nil {
+		log.Fatalf("Search failed: %v", err)
+	}
+
+	fmt.Printf("Found %d matches in %d files:\n", resp.TotalMatches, resp.FilesSearched)
+	for _, match := range resp.Matches {
+		// Print context before
+		for _, line := range match.ContextBefore {
+			fmt.Printf("  %s\n", line)
+		}
+		// Print matching line with highlight
+		fmt.Printf("→ %s:%d: %s\n", match.FilePath, match.LineNumber, match.LineText)
+		// Print context after
+		for _, line := range match.ContextAfter {
+			fmt.Printf("  %s\n", line)
+		}
+		fmt.Println()
+	}
+}
+
+func runOverview(ctx context.Context, client gismov1.CodeSitterClient) {
+	file := overviewCmd.Lookup("file").Value.String()
+
+	depthFlag := overviewCmd.Lookup("depth")
+	depth := 2
+	if depthFlag != nil {
+		fmt.Sscanf(depthFlag.Value.String(), "%d", &depth)
+	}
+
+	if file == "" {
+		log.Fatal("File path is required")
+	}
+
+	resp, err := client.GetSymbolsOverview(ctx, &gismov1.GetSymbolsOverviewRequest{
+		FilePath: file,
+		MaxDepth: int32(depth),
+	})
+	if err != nil {
+		log.Fatalf("Overview failed: %v", err)
+	}
+
+	fmt.Printf("File: %s\n", file)
+	fmt.Printf("Total symbols: %d\n\n", resp.TotalSymbols)
+
+	printSymbolTree(resp.Symbols, 0)
+}
+
+func printSymbolTree(trees []*gismov1.GetSymbolsOverviewResponse_SymbolTree, indent int) {
+	for _, tree := range trees {
+		fmt.Printf("%s%s (%s) at line %d\n",
+			strings.Repeat("  ", indent),
+			tree.Symbol.Name,
+			tree.Symbol.Kind,
+			tree.Symbol.Location.StartLine)
+		if len(tree.Children) > 0 {
+			printSymbolTree(tree.Children, indent+1)
+		}
+	}
+}
+
+func runSymbol(ctx context.Context, client gismov1.CodeSitterClient) {
+	name := symbolCmd.Lookup("name").Value.String()
+	file := symbolCmd.Lookup("file").Value.String()
+
+	substringFlag := symbolCmd.Lookup("substring")
+	substring := substringFlag != nil && substringFlag.Value.String() == "true"
+
+	maxFlag := symbolCmd.Lookup("max")
+	maxResults := 50
+	if maxFlag != nil {
+		fmt.Sscanf(maxFlag.Value.String(), "%d", &maxResults)
+	}
+
+	if name == "" {
+		log.Fatal("Symbol name pattern is required")
+	}
+
+	resp, err := client.FindSymbol(ctx, &gismov1.FindSymbolRequest{
+		NamePattern:       name,
+		FilePath:          file,
+		SubstringMatching: substring,
+		MaxResults:        int32(maxResults),
+	})
+	if err != nil {
+		log.Fatalf("Find symbol failed: %v", err)
+	}
+
+	fmt.Printf("Found %d symbols:\n", resp.TotalFound)
+	for _, symbol := range resp.Symbols {
+		fmt.Printf("  %s (%s)\n", symbol.Name, symbol.Kind)
+		fmt.Printf("    Location: %s:%d-%d\n",
+			symbol.Location.FilePath,
+			symbol.Location.StartLine,
+			symbol.Location.EndLine)
+		if symbol.Signature != "" {
+			fmt.Printf("    Signature: %s\n", symbol.Signature)
+		}
+		if symbol.ParentSymbol != "" {
+			fmt.Printf("    Parent: %s\n", symbol.ParentSymbol)
+		}
+	}
+}
+
+func runRefs(ctx context.Context, client gismov1.CodeSitterClient) {
+	symbol := refsCmd.Lookup("symbol").Value.String()
+	file := refsCmd.Lookup("file").Value.String()
+	patterns := refsCmd.Lookup("patterns").Value.String()
+
+	if symbol == "" {
+		log.Fatal("Symbol name is required")
+	}
+
+	var filePatterns []string
+	if patterns != "" {
+		filePatterns = strings.Split(patterns, ",")
+	}
+
+	var location *gismov1.Location
+	if file != "" {
+		// Create a basic location with just the file path
+		location = &gismov1.Location{
+			FilePath: file,
+		}
+	}
+
+	resp, err := client.FindReferencingSymbols(ctx, &gismov1.FindReferencingSymbolsRequest{
+		SymbolName:     symbol,
+		SymbolLocation: location,
+		FilePatterns:   filePatterns,
+	})
+	if err != nil {
+		log.Fatalf("Find references failed: %v", err)
+	}
+
+	fmt.Printf("Found %d references to '%s':\n", resp.TotalReferences, symbol)
+	for _, ref := range resp.References {
+		fmt.Printf("  %s:%d\n",
+			ref.ReferenceLocation.FilePath,
+			ref.ReferenceLocation.StartLine)
+		if ref.ContainingSymbol != nil {
+			fmt.Printf("    In: %s (%s)\n",
+				ref.ContainingSymbol.Name,
+				ref.ContainingSymbol.Kind)
+		}
+		fmt.Printf("    Text: %s\n", ref.ReferenceText)
+		fmt.Printf("    Kind: %s\n", ref.Kind)
+		fmt.Println()
+	}
 }
