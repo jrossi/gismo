@@ -7,6 +7,11 @@ import (
 
 	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
 	sitter "github.com/smacker/go-tree-sitter"
+	"github.com/smacker/go-tree-sitter/golang"
+	"github.com/smacker/go-tree-sitter/javascript"
+	"github.com/smacker/go-tree-sitter/python"
+	"github.com/smacker/go-tree-sitter/typescript/tsx"
+	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
 
 // QueryEngine provides tree-sitter query capabilities
@@ -503,11 +508,26 @@ func (qe *QueryEngine) getWeakCryptoPattern() string {
 // Helper functions
 
 func (qe *QueryEngine) getLanguage(langName string) *sitter.Language {
-	parser, ok := qe.server.parsers[langName]
+	_, ok := qe.server.parsers[langName]
 	if !ok {
 		return nil
 	}
-	return parser.Language()
+	// The parser already has the language set, we need to get it differently
+	// For now, we'll need to track languages separately or use a different approach
+	switch langName {
+	case "go":
+		return golang.GetLanguage()
+	case "javascript":
+		return javascript.GetLanguage()
+	case "typescript":
+		return typescript.GetLanguage()
+	case "tsx":
+		return tsx.GetLanguage()
+	case "python":
+		return python.GetLanguage()
+	default:
+		return nil
+	}
 }
 
 func (qe *QueryEngine) nodeTypeToSymbolKind(nodeType string) gismov1.SymbolKind {

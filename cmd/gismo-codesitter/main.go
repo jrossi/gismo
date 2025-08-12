@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/jrossi/gismo/pkg/client"
 	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
 )
 

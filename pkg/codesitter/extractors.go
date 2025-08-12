@@ -78,9 +78,20 @@ func (s *Server) walkGoTree(cursor *sitter.TreeCursor, ft *FileTree, symbols *[]
 		}
 
 	case "const_declaration", "var_declaration":
-		specs := node.ChildrenByFieldName("spec")
-		for _, spec := range specs {
-			names := spec.ChildrenByFieldName("name")
+		// Iterate through spec children directly
+		for i := 0; i < int(node.ChildCount()); i++ {
+			spec := node.Child(i)
+			if spec.Type() != "const_spec" && spec.Type() != "var_spec" {
+				continue
+			}
+			// Get names from spec
+			names := make([]*sitter.Node, 0)
+			for j := 0; j < int(spec.ChildCount()); j++ {
+				child := spec.Child(j)
+				if child.Type() == "identifier" {
+					names = append(names, child)
+				}
+			}
 			for _, nameNode := range names {
 				name := s.getNodeText(nameNode, ft.Content)
 				if name != "" {
@@ -123,7 +134,12 @@ func (s *Server) extractStructFields(typeNode *sitter.Node, ft *FileTree, symbol
 	for i := 0; i < int(fieldList.ChildCount()); i++ {
 		field := fieldList.Child(i)
 		if field.Type() == "field_declaration" {
-			names := field.ChildrenByFieldName("name")
+			// Get name nodes from field
+			names := make([]*sitter.Node, 0)
+			nameNode := field.ChildByFieldName("name")
+			if nameNode != nil {
+				names = append(names, nameNode)
+			}
 			for _, nameNode := range names {
 				name := s.getNodeText(nameNode, ft.Content)
 				if name != "" {
