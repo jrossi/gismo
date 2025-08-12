@@ -30,14 +30,16 @@ var (
 
 	// Binaries to build
 	binaries = map[string]string{
-		"gismo":           "./cmd/gismo",
-		"gismo-init":      "./cmd/gismo-init",
-		"gismo-show":      "./cmd/gismo-show",
-		"gismo-registry":  "./cmd/gismo-registry",
-		"gismo-package":   "./cmd/gismo-package",
-		"gismo-server":    "./cmd/gismo-server",
-		"gismo-query":     "./cmd/gismo-query",
-		"gismo-knowledge": "./cmd/gismo-knowledge",
+		"gismo":            "./cmd/gismo",
+		"gismo-init":       "./cmd/gismo-init",
+		"gismo-show":       "./cmd/gismo-show",
+		"gismo-registry":   "./cmd/gismo-registry",
+		"gismo-package":    "./cmd/gismo-package",
+		"gismo-server":     "./cmd/gismo-server",
+		"gismo-query":      "./cmd/gismo-query",
+		"gismo-knowledge":  "./cmd/gismo-knowledge",
+		"gismo-codesitter": "./cmd/gismo-codesitter",
+		"gismo-mcp":        "./cmd/gismo-mcp",
 	}
 )
 

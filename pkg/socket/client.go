@@ -43,18 +43,6 @@ func Connect(ctx context.Context) (*grpc.ClientConn, error) {
 
 // ConnectWithFallback tries Unix socket first, then falls back to TCP
 func ConnectWithFallback(ctx context.Context, tcpAddr string) (*grpc.ClientConn, error) {
-	// Try Unix socket first
-	conn, err := Connect(ctx)
-	if err == nil {
-		return conn, nil
-	}
-
-	// Fall back to TCP
-	conn, err = grpc.NewClient(tcpAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect via TCP: %w", err)
-	}
-
-	return conn, nil
+	// Only use Unix socket - no TCP fallback for security
+	return Connect(ctx)
 }
