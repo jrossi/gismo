@@ -181,12 +181,8 @@ func (s *MCPServer) wrapGRPCCall(grpcMethod interface{}) ToolHandler {
 		requestValue := reflect.New(requestType.Elem())
 
 		// Handle special cases where we need to add project context
-		if _, ok := requestValue.Interface().(interface {
-			GetContext() *gismov1.ProjectContext
-		}); ok {
-			// This is a Knowledge service request that needs project context
-			// We'll need to handle this specially
-		}
+		// Check if this is a Knowledge service request that needs project context
+		// (We'll handle this in addProjectContext method below)
 
 		// Unmarshal the arguments into the request
 		if err := json.Unmarshal(args, requestValue.Interface()); err != nil {
