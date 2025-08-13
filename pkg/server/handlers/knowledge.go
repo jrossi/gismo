@@ -942,32 +942,31 @@ func (h *KnowledgeHandler) initResearchManager() error {
 			initErr = fmt.Errorf("EXA_API_KEY environment variable not set")
 			return
 		}
-		
+
 		manager, err := research.NewResearchManager(h.db, apiKey)
 		if err != nil {
 			initErr = err
 			return
 		}
-		
+
 		// Configure max cost and consent requirements
 		maxCost := 15.0
 		if costStr := os.Getenv("EXA_RESEARCH_MAX_COST"); costStr != "" {
 			var cost float64
-			fmt.Sscanf(costStr, "%f", &cost)
-			if cost > 0 {
+			if _, err := fmt.Sscanf(costStr, "%f", &cost); err == nil && cost > 0 {
 				maxCost = cost
 			}
 		}
 		manager.SetMaxCost(maxCost)
-		
+
 		// Require consent by default, can be disabled via env var
 		requireConsent := os.Getenv("EXA_RESEARCH_NO_CONSENT") != "true"
 		manager.SetRequireConsent(requireConsent)
-		
+
 		h.researchManager = manager
 		log.Printf("Research manager initialized (max cost: $%.2f, consent required: %v)", maxCost, requireConsent)
 	})
-	
+
 	return initErr
 }
 
@@ -976,18 +975,18 @@ func (h *KnowledgeHandler) CreateResearchTask(ctx context.Context, req *gismov1.
 	if req.Context == nil {
 		return nil, status.Error(codes.InvalidArgument, "project context is required")
 	}
-	
+
 	logProjectContext("CreateResearchTask", req.Context)
-	
+
 	// Initialize research manager if needed
 	if err := h.initResearchManager(); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "research manager initialization failed: %v", err)
 	}
-	
+
 	if h.researchManager == nil {
 		return nil, status.Error(codes.FailedPrecondition, "research manager not available")
 	}
-	
+
 	// Validate instructions
 	if req.Instructions == "" {
 		return nil, status.Error(codes.InvalidArgument, "instructions are required")
@@ -995,7 +994,7 @@ func (h *KnowledgeHandler) CreateResearchTask(ctx context.Context, req *gismov1.
 	if len(req.Instructions) > 4096 {
 		return nil, status.Error(codes.InvalidArgument, "instructions exceed 4096 character limit")
 	}
-	
+
 	// Default model
 	model := req.Model
 	if model == "" {
@@ -1004,28 +1003,28 @@ func (h *KnowledgeHandler) CreateResearchTask(ctx context.Context, req *gismov1.
 	if model != "exa-research" && model != "exa-research-pro" {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid model: %s (must be exa-research or exa-research-pro)", model)
 	}
-	
+
 	// Convert schema if provided
 	var schema interface{}
 	if req.OutputSchema != nil {
 		schema = req.OutputSchema.AsMap()
 	}
-	
+
 	// Check consent
 	if !req.UserConsent {
 		maxCost := 15.0
 		if h.researchManager != nil {
 			// Get max cost from manager (we can't access it directly, so use default)
 			if costStr := os.Getenv("EXA_RESEARCH_MAX_COST"); costStr != "" {
-				fmt.Sscanf(costStr, "%f", &maxCost)
+				_, _ = fmt.Sscanf(costStr, "%f", &maxCost)
 			}
 		}
-		
+
 		return &gismov1.CreateResearchTaskResponse{
 			Warning: fmt.Sprintf("User consent required for research tasks. Potential cost up to $%.2f. Please set user_consent=true to proceed.", maxCost),
 		}, nil
 	}
-	
+
 	// Create the task
 	taskID, err := h.researchManager.CreateTask(
 		ctx,
@@ -1035,17 +1034,17 @@ func (h *KnowledgeHandler) CreateResearchTask(ctx context.Context, req *gismov1.
 		req.Context.ProjectName,
 		req.UserConsent,
 	)
-	
+
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create research task: %v", err)
 	}
-	
+
 	// Estimate cost based on model
 	estimatedCost := 5.0 // Default for exa-research
 	if model == "exa-research-pro" {
 		estimatedCost = 15.0
 	}
-	
+
 	return &gismov1.CreateResearchTaskResponse{
 		TaskId:        taskID,
 		Message:       fmt.Sprintf("Research task created. Typical completion time: %s", getExpectedTime(model)),
@@ -1068,33 +1067,33 @@ func (h *KnowledgeHandler) GetResearchTaskStatus(ctx context.Context, req *gismo
 	if req.Context == nil {
 		return nil, status.Error(codes.InvalidArgument, "project context is required")
 	}
-	
+
 	logProjectContext("GetResearchTaskStatus", req.Context)
-	
+
 	if req.TaskId == "" {
 		return nil, status.Error(codes.InvalidArgument, "task_id is required")
 	}
-	
+
 	// Initialize research manager if needed
 	if err := h.initResearchManager(); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "research manager initialization failed: %v", err)
 	}
-	
+
 	if h.researchManager == nil {
 		return nil, status.Error(codes.FailedPrecondition, "research manager not available")
 	}
-	
+
 	// Get task status
 	taskStatus, err := h.researchManager.GetTaskStatus(ctx, req.TaskId)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "task not found: %v", err)
 	}
-	
+
 	resp := &gismov1.GetResearchTaskStatusResponse{
 		TaskId: req.TaskId,
 		Status: fmt.Sprintf("%v", taskStatus["status"]),
 	}
-	
+
 	// Add optional fields
 	if msg, ok := taskStatus["progress_message"].(string); ok {
 		resp.ProgressMessage = msg
@@ -1108,7 +1107,7 @@ func (h *KnowledgeHandler) GetResearchTaskStatus(ctx context.Context, req *gismo
 	if errMsg, ok := taskStatus["error"].(string); ok {
 		resp.Error = errMsg
 	}
-	
+
 	// Handle result
 	if result, ok := taskStatus["result"]; ok && result != nil {
 		resultStruct, err := structpb.NewStruct(result.(map[string]interface{}))
@@ -1116,18 +1115,18 @@ func (h *KnowledgeHandler) GetResearchTaskStatus(ctx context.Context, req *gismo
 			resp.Result = resultStruct
 		}
 	}
-	
+
 	// Handle citations
 	if citations, ok := taskStatus["citations"].([]interface{}); ok {
 		for _, c := range citations {
 			if citation, ok := c.(map[string]interface{}); ok {
 				rc := &gismov1.ResearchCitation{
-					Url:   getStringField(citation, "url"),
-					Title: getStringField(citation, "title"),
-					Author: getStringField(citation, "author"),
+					Url:         getStringField(citation, "url"),
+					Title:       getStringField(citation, "title"),
+					Author:      getStringField(citation, "author"),
 					PublishedAt: getStringField(citation, "published_at"),
 				}
-				
+
 				if quotes, ok := citation["quotes"].([]interface{}); ok {
 					for _, q := range quotes {
 						if quote, ok := q.(string); ok {
@@ -1135,12 +1134,12 @@ func (h *KnowledgeHandler) GetResearchTaskStatus(ctx context.Context, req *gismo
 						}
 					}
 				}
-				
+
 				resp.Citations = append(resp.Citations, rc)
 			}
 		}
 	}
-	
+
 	return resp, nil
 }
 
@@ -1157,22 +1156,22 @@ func (h *KnowledgeHandler) CancelResearchTask(ctx context.Context, req *gismov1.
 	if req.Context == nil {
 		return nil, status.Error(codes.InvalidArgument, "project context is required")
 	}
-	
+
 	logProjectContext("CancelResearchTask", req.Context)
-	
+
 	if req.TaskId == "" {
 		return nil, status.Error(codes.InvalidArgument, "task_id is required")
 	}
-	
+
 	// Initialize research manager if needed
 	if err := h.initResearchManager(); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "research manager initialization failed: %v", err)
 	}
-	
+
 	if h.researchManager == nil {
 		return nil, status.Error(codes.FailedPrecondition, "research manager not available")
 	}
-	
+
 	// Cancel the task
 	err := h.researchManager.CancelTask(ctx, req.TaskId)
 	if err != nil {
@@ -1181,7 +1180,7 @@ func (h *KnowledgeHandler) CancelResearchTask(ctx context.Context, req *gismov1.
 			Message: fmt.Sprintf("Failed to cancel task: %v", err),
 		}, nil
 	}
-	
+
 	return &gismov1.CancelResearchTaskResponse{
 		Success: true,
 		Message: "Task cancellation requested",
@@ -1193,55 +1192,55 @@ func (h *KnowledgeHandler) ListActiveResearchTasks(ctx context.Context, req *gis
 	if req.Context == nil {
 		return nil, status.Error(codes.InvalidArgument, "project context is required")
 	}
-	
+
 	logProjectContext("ListActiveResearchTasks", req.Context)
-	
+
 	// Initialize research manager if needed
 	if err := h.initResearchManager(); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "research manager initialization failed: %v", err)
 	}
-	
+
 	if h.researchManager == nil {
 		return &gismov1.ListActiveResearchTasksResponse{
 			Tasks:      []*gismov1.ResearchTaskSummary{},
 			TotalCount: 0,
 		}, nil
 	}
-	
+
 	// Get project context for filtering
 	projectContext := ""
 	if !req.IncludeAllProjects {
 		projectContext = req.Context.ProjectName
 	}
-	
+
 	// Get active tasks
 	tasks, err := h.researchManager.GetActiveTasks(ctx, projectContext)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get active tasks: %v", err)
 	}
-	
+
 	// Convert to protobuf
 	var pbTasks []*gismov1.ResearchTaskSummary
 	for _, task := range tasks {
 		summary := &gismov1.ResearchTaskSummary{
-			TaskId:         getStringField(task, "id"),
-			Instructions:   getStringField(task, "instructions"),
-			Model:          getStringField(task, "model"),
-			Status:         getStringField(task, "status"),
+			TaskId:          getStringField(task, "id"),
+			Instructions:    getStringField(task, "instructions"),
+			Model:           getStringField(task, "model"),
+			Status:          getStringField(task, "status"),
 			ProgressMessage: getStringField(task, "progress_message"),
-			ProjectContext: getStringField(task, "project_context"),
+			ProjectContext:  getStringField(task, "project_context"),
 		}
-		
+
 		if estCost, ok := task["estimated_cost"].(float64); ok {
 			summary.EstimatedCost = float32(estCost)
 		}
 		if elapsed, ok := task["elapsed_seconds"].(float64); ok {
 			summary.ElapsedSeconds = int64(elapsed)
 		}
-		
+
 		pbTasks = append(pbTasks, summary)
 	}
-	
+
 	return &gismov1.ListActiveResearchTasksResponse{
 		Tasks:      pbTasks,
 		TotalCount: safeIntToInt32(len(pbTasks)),

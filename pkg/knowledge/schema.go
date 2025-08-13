@@ -128,7 +128,7 @@ SELECT
   model,
   status,
   progress_message,
-  EXTRACT(EPOCH FROM (NOW() - created_at)) as elapsed_seconds,
+  EXTRACT(EPOCH FROM (CAST(NOW() AS TIMESTAMP) - created_at)) as elapsed_seconds,
   estimated_cost,
   retry_count,
   project_context
