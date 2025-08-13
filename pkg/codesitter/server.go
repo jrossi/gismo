@@ -548,6 +548,22 @@ func (s *Server) notifySymbolChange(symbol *gismov1.Symbol, kind gismov1.SymbolC
 
 // Helper functions
 
+// resolveFilePath resolves a file path relative to the workspace root
+func (s *Server) resolveFilePath(path string) string {
+	// If the path is already absolute, return it as is
+	if filepath.IsAbs(path) {
+		return path
+	}
+
+	// If we don't have a workspace root, return the path as is
+	if s.workspaceRoot == "" {
+		return path
+	}
+
+	// Resolve relative to workspace root
+	return filepath.Join(s.workspaceRoot, path)
+}
+
 func generateSessionID() string {
 	return fmt.Sprintf("session-%d", time.Now().UnixNano())
 }

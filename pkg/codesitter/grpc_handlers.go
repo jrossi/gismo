@@ -168,7 +168,10 @@ func (s *Server) ValidateEdit(ctx context.Context, req *gismov1.ValidateEditRequ
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	tree, exists := s.trees[req.FilePath]
+	// Resolve the file path relative to workspace root
+	filePath := s.resolveFilePath(req.FilePath)
+
+	tree, exists := s.trees[filePath]
 	if !exists {
 		return &gismov1.ValidateEditResponse{
 			IsValid: false,
@@ -266,7 +269,9 @@ func (s *Server) GetDiagnostics(ctx context.Context, req *gismov1.GetDiagnostics
 	countsBySeverity := make(map[string]int32)
 
 	for _, path := range req.FilePaths {
-		tree, exists := s.trees[path]
+		// Resolve the file path relative to workspace root
+		resolvedPath := s.resolveFilePath(path)
+		tree, exists := s.trees[resolvedPath]
 		if !exists {
 			continue
 		}
@@ -329,7 +334,9 @@ func (s *Server) GetTypeInfo(ctx context.Context, req *gismov1.GetTypeInfoReques
 	defer s.mu.RUnlock()
 
 	// Find the file
-	tree, exists := s.trees[req.Location.FilePath]
+	// Resolve the file path relative to workspace root
+	filePath := s.resolveFilePath(req.Location.FilePath)
+	tree, exists := s.trees[filePath]
 	if !exists {
 		return &gismov1.GetTypeInfoResponse{Found: false}, nil
 	}
@@ -374,7 +381,9 @@ func (s *Server) SuggestRefactoring(ctx context.Context, req *gismov1.SuggestRef
 	suggestions := make([]*gismov1.RefactoringSuggestion, 0)
 
 	// Find the file and node at location
-	tree, exists := s.trees[req.Location.FilePath]
+	// Resolve the file path relative to workspace root
+	filePath := s.resolveFilePath(req.Location.FilePath)
+	tree, exists := s.trees[filePath]
 	if !exists {
 		return &gismov1.SuggestRefactoringResponse{}, nil
 	}
@@ -903,7 +912,10 @@ func (s *Server) GetSymbolsOverview(ctx context.Context, req *gismov1.GetSymbols
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	tree, exists := s.trees[req.FilePath]
+	// Resolve the file path relative to workspace root
+	filePath := s.resolveFilePath(req.FilePath)
+
+	tree, exists := s.trees[filePath]
 	if !exists {
 		return nil, fmt.Errorf("file not found: %s", req.FilePath)
 	}
@@ -934,7 +946,8 @@ func (s *Server) FindSymbol(ctx context.Context, req *gismov1.FindSymbolRequest)
 	for _, symbols := range s.symbolIndex.byName {
 		for _, symbol := range symbols {
 			// Check file path filter if specified
-			if req.FilePath != "" && symbol.Location.FilePath != req.FilePath {
+			resolvedPath := s.resolveFilePath(req.FilePath)
+			if req.FilePath != "" && symbol.Location.FilePath != resolvedPath {
 				continue
 			}
 

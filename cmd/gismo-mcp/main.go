@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -103,14 +104,21 @@ func NewMCPServer() (*MCPServer, error) {
 		return nil, fmt.Errorf("failed to connect to gismo-server: %w", err)
 	}
 
-	// Get current working directory for project context
+	// Get current working directory
 	cwd, _ := os.Getwd()
 
-	// Create project context
-	projectName := strings.ReplaceAll(cwd, "/", "-")
-	if projectName != "" && projectName[0] == '-' {
-		projectName = projectName[1:]
+	// Find project root by looking for .claude directory
+	projectRoot, err := findProjectRoot(cwd)
+	if err != nil {
+		// Fall back to current directory if no .claude found
+		projectRoot = cwd
+		log.Printf("Warning: Could not find .claude directory, using cwd: %s", cwd)
+	} else {
+		log.Printf("Found project root: %s", projectRoot)
 	}
+
+	// Create project context
+	projectName := filepath.Base(projectRoot)
 
 	s := &MCPServer{
 		reader:          bufio.NewReader(os.Stdin),
@@ -118,9 +126,9 @@ func NewMCPServer() (*MCPServer, error) {
 		grpcConn:        conn,
 		csClient:        gismov1.NewCodeSitterClient(conn),
 		knowledgeClient: gismov1.NewKnowledgeServiceClient(conn),
-		workspace:       cwd,
+		workspace:       projectRoot,
 		projectContext: &gismov1.ProjectContext{
-			ProjectPath: cwd,
+			ProjectPath: projectRoot,
 			ProjectName: projectName,
 		},
 		tools: make(map[string]ToolHandler),
@@ -184,6 +192,18 @@ func (s *MCPServer) wrapGRPCCall(grpcMethod interface{}) ToolHandler {
 		// Check if this is a Knowledge service request that needs project context
 		// (We'll handle this in addProjectContext method below)
 
+		// Convert the arguments to snake_case for protobuf
+		// The MCP client sends PascalCase but protobuf expects snake_case
+		var argsMap map[string]interface{}
+		if err := json.Unmarshal(args, &argsMap); err == nil {
+			// Convert keys to snake_case
+			snakeCaseArgs := make(map[string]interface{})
+			for k, v := range argsMap {
+				snakeCaseArgs[camelToSnake(k)] = v
+			}
+			args, _ = json.Marshal(snakeCaseArgs)
+		}
+
 		// Unmarshal the arguments into the request
 		if err := json.Unmarshal(args, requestValue.Interface()); err != nil {
 			return ToolCallResult{
@@ -233,6 +253,88 @@ func (s *MCPServer) addProjectContext(req interface{}) {
 	if contextField.IsValid() && contextField.CanSet() {
 		contextField.Set(reflect.ValueOf(s.projectContext))
 	}
+
+	// Also handle file paths - convert relative to absolute
+	s.normalizeFilePaths(req)
+}
+
+// normalizeFilePaths converts relative file paths to absolute paths
+func (s *MCPServer) normalizeFilePaths(req interface{}) {
+	v := reflect.ValueOf(req).Elem()
+
+	// Check for FilePath field
+	filePathField := v.FieldByName("FilePath")
+	if filePathField.IsValid() && filePathField.CanSet() && filePathField.Kind() == reflect.String {
+		path := filePathField.String()
+		if path != "" && !filepath.IsAbs(path) {
+			absPath := filepath.Join(s.workspace, path)
+			filePathField.SetString(absPath)
+		}
+	}
+
+	// Check for Path field
+	pathField := v.FieldByName("Path")
+	if pathField.IsValid() && pathField.CanSet() && pathField.Kind() == reflect.String {
+		path := pathField.String()
+		if path != "" && !filepath.IsAbs(path) {
+			absPath := filepath.Join(s.workspace, path)
+			pathField.SetString(absPath)
+		}
+	}
+
+	// Check for WorkspaceRoot field
+	rootField := v.FieldByName("WorkspaceRoot")
+	if rootField.IsValid() && rootField.CanSet() && rootField.Kind() == reflect.String {
+		path := rootField.String()
+		if path != "" && !filepath.IsAbs(path) {
+			absPath := filepath.Join(s.workspace, path)
+			rootField.SetString(absPath)
+		}
+	}
+}
+
+// findProjectRoot finds the project root by looking for .claude directory
+func findProjectRoot(startPath string) (string, error) {
+	absPath, err := filepath.Abs(startPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Walk up the directory tree looking for .claude
+	current := absPath
+	for {
+		claudeDir := filepath.Join(current, ".claude")
+		if stat, err := os.Stat(claudeDir); err == nil && stat.IsDir() {
+			// Found .claude directory, this is the project root
+			return current, nil
+		}
+
+		// Check if we're at the root
+		parent := filepath.Dir(current)
+		if parent == current {
+			// Reached filesystem root without finding .claude
+			break
+		}
+		current = parent
+	}
+
+	// Also check for .git as a fallback
+	current = absPath
+	for {
+		gitDir := filepath.Join(current, ".git")
+		if stat, err := os.Stat(gitDir); err == nil && (stat.IsDir() || stat.Mode().IsRegular()) {
+			// Found .git directory or file (for submodules), this is a project root
+			return current, nil
+		}
+
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+		current = parent
+	}
+
+	return "", fmt.Errorf("could not find project root (.claude or .git directory)")
 }
 
 func (s *MCPServer) Run() error {
