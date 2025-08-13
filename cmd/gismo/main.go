@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"time"
 
 	"github.com/jrossi/gismo/pkg/client"
@@ -29,15 +27,33 @@ func main() {
 		configFile  = flag.String("config", "", "Path to configuration file")
 	)
 
+	// Create subcommand registry
+	registry, err := engine.NewSubcommandRegistry()
+	if err != nil {
+		// Fallback to basic usage if we can't create registry
+		registry = nil
+		if *debug {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to create subcommand registry: %v\n", err)
+		}
+	}
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "CCFeedback - Claude Code Hooks Feedback System\n\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags] [command] [arguments]\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "Commands:\n")
-		fmt.Fprintf(os.Stderr, "  init                    Set up gismo in Claude Code settings\n")
-		fmt.Fprintf(os.Stderr, "  show <command>          Show various information (config, filter, setup, linters)\n")
-		fmt.Fprintf(os.Stderr, "  registry <subcommand>   Manage package registries (add, remove, list, update)\n")
-		fmt.Fprintf(os.Stderr, "  package <subcommand>    Manage packages (install, remove, list, update)\n")
-		fmt.Fprintf(os.Stderr, "  query [SQL]             Execute SQL queries against the knowledge database\n")
+
+		// Use dynamic command list from registry if available
+		if registry != nil {
+			registry.PrintUsage()
+		} else {
+			// Fallback to static list
+			fmt.Fprintf(os.Stderr, "Commands:\n")
+			fmt.Fprintf(os.Stderr, "  init                    Set up gismo in Claude Code settings\n")
+			fmt.Fprintf(os.Stderr, "  show <command>          Show various information (config, filter, setup, linters)\n")
+			fmt.Fprintf(os.Stderr, "  registry <subcommand>   Manage package registries (add, remove, list, update)\n")
+			fmt.Fprintf(os.Stderr, "  package <subcommand>    Manage packages (install, remove, list, update)\n")
+			fmt.Fprintf(os.Stderr, "  query [SQL]             Execute SQL queries against the knowledge database\n")
+		}
+
 		fmt.Fprintf(os.Stderr, "\nFlags:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nDefault behavior (no command):\n")
@@ -71,7 +87,60 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Load configuration
+	// Check for subcommands
+	args := flag.Args()
+	if len(args) > 0 && registry != nil {
+		// Try to find and execute subcommand
+		cmdName := args[0]
+
+		// Special handling for "help" command to show available subcommands
+		if cmdName == "help" || cmdName == "commands" {
+			fmt.Fprintf(os.Stdout, "Available gismo subcommands:\n\n")
+			registry.PrintUsage()
+			os.Exit(0)
+		}
+
+		// Special handling for show-actions (backward compatibility)
+		if cmdName == "show-actions" {
+			cmdInfo, found := registry.GetCommand("show")
+			if found {
+				// Prepare flags to pass through
+				flags := map[string]interface{}{
+					"--config": configFile,
+					"--debug":  *debug,
+				}
+
+				// Execute the show command with remaining args
+				if err := registry.Execute(cmdInfo, args[1:], flags); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+				os.Exit(0)
+			}
+		}
+
+		// Look up the subcommand
+		if cmdInfo, found := registry.GetCommand(cmdName); found {
+			// Prepare flags to pass through
+			flags := map[string]interface{}{
+				"--config":  configFile,
+				"--debug":   *debug,
+				"--timeout": timeout.String(),
+			}
+
+			// Execute the subcommand
+			if err := registry.Execute(cmdInfo, args[1:], flags); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}
+
+		// Unknown subcommand - fall through to default behavior
+		// This allows for future extensibility
+	}
+
+	// Load configuration for default hook processing
 	configLoader, err := engine.NewConfigLoader()
 	if err != nil {
 		if *debug {
@@ -123,217 +192,6 @@ func main() {
 	// Set the app config if available
 	if appConfig != nil {
 		ruleEngine.SetAppConfig(appConfig)
-	}
-
-	// Check for subcommands
-	args := flag.Args()
-	if len(args) > 0 && args[0] == "init" {
-		// Dispatch to gismo-init binary
-		subcommand := "gismo-init"
-
-		// Try to find the subcommand in the same directory as the main binary
-		execPath, err := os.Executable()
-		if err == nil {
-			dir := filepath.Dir(execPath)
-			localSubcommand := filepath.Join(dir, subcommand)
-			if _, err := os.Stat(localSubcommand); err == nil {
-				subcommand = localSubcommand
-			}
-		}
-
-		cmd := exec.Command(subcommand, args[1:]...) // #nosec G204 - subcommand is controlled
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = os.Environ()
-
-		if err := cmd.Run(); err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				os.Exit(exitErr.ExitCode())
-			}
-			fmt.Fprintf(os.Stderr, "Error: failed to execute %s: %v\n", subcommand, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	} else if len(args) > 0 && (args[0] == "show" || args[0] == "show-actions") {
-		// Dispatch to gismo-show binary
-		subcommand := "gismo-show"
-
-		// Try to find the subcommand in the same directory as the main binary
-		execPath, err := os.Executable()
-		if err == nil {
-			dir := filepath.Dir(execPath)
-			localSubcommand := filepath.Join(dir, subcommand)
-			if _, err := os.Stat(localSubcommand); err == nil {
-				subcommand = localSubcommand
-			}
-		}
-
-		// Build arguments for show command
-		var showArgs []string
-
-		// Add config flag if it was provided
-		if *configFile != "" {
-			showArgs = append(showArgs, "--config", *configFile)
-		}
-		// Add debug flag if it was provided
-		if *debug {
-			showArgs = append(showArgs, "--debug")
-		}
-
-		// Handle backward compatibility for show-actions
-		if args[0] == "show-actions" {
-			// For show-actions, just pass the files directly
-			showArgs = append(showArgs, args[1:]...)
-		} else {
-			// Regular show command
-			showArgs = append(showArgs, args[1:]...)
-		}
-
-		cmd := exec.Command(subcommand, showArgs...) // #nosec G204 - subcommand is controlled
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = os.Environ()
-
-		if err := cmd.Run(); err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				os.Exit(exitErr.ExitCode())
-			}
-			fmt.Fprintf(os.Stderr, "Error: failed to execute %s: %v\n", subcommand, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	} else if len(args) > 0 && args[0] == "registry" {
-		// Dispatch to gismo-registry binary
-		subcommand := "gismo-registry"
-
-		// Try to find the subcommand in the same directory as the main binary
-		execPath, err := os.Executable()
-		if err == nil {
-			dir := filepath.Dir(execPath)
-			localSubcommand := filepath.Join(dir, subcommand)
-			if _, err := os.Stat(localSubcommand); err == nil {
-				subcommand = localSubcommand
-			}
-		}
-
-		// Build arguments for registry command
-		var registryArgs []string
-
-		// Add config flag if it was provided
-		if *configFile != "" {
-			registryArgs = append(registryArgs, "--config", *configFile)
-		}
-		// Add debug flag if it was provided
-		if *debug {
-			registryArgs = append(registryArgs, "--debug")
-		}
-
-		// Add registry subcommand and its arguments
-		registryArgs = append(registryArgs, args[1:]...)
-
-		cmd := exec.Command(subcommand, registryArgs...) // #nosec G204 - subcommand is controlled
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = os.Environ()
-
-		if err := cmd.Run(); err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				os.Exit(exitErr.ExitCode())
-			}
-			fmt.Fprintf(os.Stderr, "Error: failed to execute %s: %v\n", subcommand, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	} else if len(args) > 0 && args[0] == "package" {
-		// Dispatch to gismo-package binary
-		subcommand := "gismo-package"
-
-		// Try to find the subcommand in the same directory as the main binary
-		execPath, err := os.Executable()
-		if err == nil {
-			dir := filepath.Dir(execPath)
-			localSubcommand := filepath.Join(dir, subcommand)
-			if _, err := os.Stat(localSubcommand); err == nil {
-				subcommand = localSubcommand
-			}
-		}
-
-		// Build arguments for package command
-		var packageArgs []string
-
-		// Add config flag if it was provided
-		if *configFile != "" {
-			packageArgs = append(packageArgs, "--config", *configFile)
-		}
-		// Add debug flag if it was provided
-		if *debug {
-			packageArgs = append(packageArgs, "--debug")
-		}
-
-		// Add package subcommand and its arguments
-		packageArgs = append(packageArgs, args[1:]...)
-
-		cmd := exec.Command(subcommand, packageArgs...) // #nosec G204 - subcommand is controlled
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = os.Environ()
-
-		if err := cmd.Run(); err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				os.Exit(exitErr.ExitCode())
-			}
-			fmt.Fprintf(os.Stderr, "Error: failed to execute %s: %v\n", subcommand, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	} else if len(args) > 0 && args[0] == "query" {
-		// Dispatch to gismo-query binary
-		subcommand := "gismo-query"
-
-		// Try to find the subcommand in the same directory as the main binary
-		execPath, err := os.Executable()
-		if err == nil {
-			dir := filepath.Dir(execPath)
-			localSubcommand := filepath.Join(dir, subcommand)
-			if _, err := os.Stat(localSubcommand); err == nil {
-				subcommand = localSubcommand
-			}
-		}
-
-		// Build arguments for query command
-		var queryArgs []string
-
-		// Add debug flag if it was provided
-		if *debug {
-			queryArgs = append(queryArgs, "--debug")
-		}
-
-		// Add timeout flag if it was provided
-		if *timeout != 60*time.Second {
-			queryArgs = append(queryArgs, "--timeout", timeout.String())
-		}
-
-		// Add SQL query and its arguments
-		queryArgs = append(queryArgs, args[1:]...)
-
-		cmd := exec.Command(subcommand, queryArgs...) // #nosec G204 - subcommand is controlled
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = os.Environ()
-
-		if err := cmd.Run(); err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				os.Exit(exitErr.ExitCode())
-			}
-			fmt.Fprintf(os.Stderr, "Error: failed to execute %s: %v\n", subcommand, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
 	}
 
 	// Default behavior: process hook from stdin
