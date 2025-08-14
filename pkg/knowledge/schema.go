@@ -139,7 +139,33 @@ ORDER BY created_at DESC;
 
 // dropSchema drops all knowledge-related tables
 const dropSchema = `
+-- Drop reflection tables first (they have foreign keys)
+DROP VIEW IF EXISTS v_reflection_effectiveness;
+DROP VIEW IF EXISTS v_reflection_knowledge_patterns;
+DROP TABLE IF EXISTS reflection_events;
+DROP TABLE IF EXISTS reflection_context_scores;
+DROP TABLE IF EXISTS reflection_working_memory;
+DROP TABLE IF EXISTS reflection_patterns;
+DROP TABLE IF EXISTS reflection_checkpoints;
+DROP TABLE IF EXISTS reflection_operations;
+DROP TABLE IF EXISTS reflection_sessions;
+DROP SEQUENCE IF EXISTS reflection_event_seq;
+DROP SEQUENCE IF EXISTS reflection_score_seq;
+DROP SEQUENCE IF EXISTS reflection_pattern_seq;
+DROP SEQUENCE IF EXISTS reflection_operation_seq;
+
+-- Drop knowledge tables
+DROP TABLE IF EXISTS exa_research_events;
+DROP TABLE IF EXISTS exa_research_tasks;
+DROP TABLE IF EXISTS exa_search_results;
+DROP TABLE IF EXISTS exa_feedback;
+DROP TABLE IF EXISTS exa_search_cache;
 DROP TABLE IF EXISTS docset_content;
 DROP TABLE IF EXISTS docsets;
+DROP VIEW IF EXISTS v_active_research_tasks;
+DROP SEQUENCE IF EXISTS exa_research_event_seq;
+DROP SEQUENCE IF EXISTS exa_research_task_seq;
+DROP SEQUENCE IF EXISTS exa_result_seq;
+DROP SEQUENCE IF EXISTS exa_feedback_seq;
 DROP SEQUENCE IF EXISTS docset_content_seq;
 `

@@ -57,7 +57,7 @@ func getBuildFlags() ([]string, error) {
 
 	date := time.Now().UTC().Format("2006-01-02T15:04:05Z")
 
-	ldflags := fmt.Sprintf("-s -w -X main.version=%s -X main.commit=%s -X main.date=%s -X main.builtBy=mage",
+	ldflags := fmt.Sprintf("-s -w -X github.com/jrossi/gismo/pkg/version.BuildVersion=%s -X github.com/jrossi/gismo/pkg/version.BuildCommit=%s -X github.com/jrossi/gismo/pkg/version.BuildDate=%s -X github.com/jrossi/gismo/pkg/version.BuildBy=mage",
 		version, commit, date)
 
 	return []string{"-ldflags", ldflags}, nil

@@ -73,8 +73,17 @@ func NewWithDB(db *sql.DB) *Store {
 
 // initSchema creates the database schema if it doesn't exist
 func (s *Store) initSchema(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, createSchema)
-	return err
+	// Create main knowledge schema
+	if _, err := s.db.ExecContext(ctx, createSchema); err != nil {
+		return fmt.Errorf("failed to create main schema: %w", err)
+	}
+
+	// Create reflection schema for context management
+	if err := AddReflectionSchema(s.db); err != nil {
+		return fmt.Errorf("failed to create reflection schema: %w", err)
+	}
+
+	return nil
 }
 
 // DB returns the underlying database connection

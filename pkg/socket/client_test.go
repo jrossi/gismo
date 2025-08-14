@@ -36,7 +36,7 @@ func TestGetSocketPath(t *testing.T) {
 			setupEnv: func() {
 				os.Unsetenv("XDG_RUNTIME_DIR")
 			},
-			cleanupEnv: func() {},
+			cleanupEnv:  func() {},
 			wantPattern: filepath.Join(os.TempDir(), fmt.Sprintf("gismo-%d", os.Getuid()), "gismo.sock"),
 		},
 	}
@@ -46,7 +46,7 @@ func TestGetSocketPath(t *testing.T) {
 			// Save original value
 			oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 			defer os.Setenv("XDG_RUNTIME_DIR", oldXDG)
-			
+
 			tt.setupEnv()
 			defer tt.cleanupEnv()
 
@@ -60,9 +60,9 @@ func TestGetSocketPath(t *testing.T) {
 
 func TestConnect(t *testing.T) {
 	tests := []struct {
-		name       string
-		setupMock  func() (func(), error)
-		wantErr    bool
+		name        string
+		setupMock   func() (func(), error)
+		wantErr     bool
 		errContains string
 	}{
 		{
@@ -72,7 +72,7 @@ func TestConnect(t *testing.T) {
 				tmpDir := t.TempDir()
 				oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 				os.Setenv("XDG_RUNTIME_DIR", tmpDir)
-				
+
 				cleanup := func() {
 					os.Setenv("XDG_RUNTIME_DIR", oldXDG)
 				}
@@ -88,35 +88,35 @@ func TestConnect(t *testing.T) {
 				tmpDir := t.TempDir()
 				oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 				os.Setenv("XDG_RUNTIME_DIR", tmpDir)
-				
+
 				// Create gismo directory
 				gismoDir := filepath.Join(tmpDir, "gismo")
 				if err := os.MkdirAll(gismoDir, 0700); err != nil {
 					return nil, err
 				}
-				
+
 				socketPath := filepath.Join(gismoDir, "gismo.sock")
-				
+
 				// Create a mock server
 				listener, err := net.Listen("unix", socketPath)
 				if err != nil {
 					return nil, fmt.Errorf("failed to create test listener: %w", err)
 				}
-				
+
 				// Start a simple gRPC server
 				srv := grpc.NewServer()
 				go srv.Serve(listener)
-				
+
 				// Give server time to start
 				time.Sleep(10 * time.Millisecond)
-				
+
 				cleanup := func() {
 					srv.Stop()
 					listener.Close()
 					os.Remove(socketPath)
 					os.Setenv("XDG_RUNTIME_DIR", oldXDG)
 				}
-				
+
 				return cleanup, nil
 			},
 			wantErr: false,
@@ -133,18 +133,18 @@ func TestConnect(t *testing.T) {
 
 			ctx := context.Background()
 			conn, err := Connect(ctx)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if err != nil && tt.errContains != "" {
 				if !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("Connect() error = %v, want error containing %v", err, tt.errContains)
 				}
 			}
-			
+
 			if conn != nil {
 				defer conn.Close()
 				// Verify connection is valid
@@ -160,27 +160,27 @@ func TestConnectWithFallback(t *testing.T) {
 	// Since ConnectWithFallback now only uses Unix socket,
 	// it should behave exactly like Connect
 	ctx := context.Background()
-	
+
 	// Create a temporary directory for our test socket
 	tmpDir := t.TempDir()
 	oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 	os.Setenv("XDG_RUNTIME_DIR", tmpDir)
 	defer os.Setenv("XDG_RUNTIME_DIR", oldXDG)
-	
+
 	// Create gismo directory
 	gismoDir := filepath.Join(tmpDir, "gismo")
 	if err := os.MkdirAll(gismoDir, 0700); err != nil {
 		t.Fatalf("Failed to create gismo directory: %v", err)
 	}
-	
+
 	socketPath := filepath.Join(gismoDir, "gismo.sock")
-	
+
 	// Test without socket existing
 	_, err := ConnectWithFallback(ctx, "localhost:50051")
 	if err == nil {
 		t.Error("Expected error when socket doesn't exist")
 	}
-	
+
 	// Create a mock server
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
@@ -188,14 +188,14 @@ func TestConnectWithFallback(t *testing.T) {
 	}
 	defer listener.Close()
 	defer os.Remove(socketPath)
-	
+
 	srv := grpc.NewServer()
 	go srv.Serve(listener)
 	defer srv.Stop()
-	
+
 	// Give server time to start
 	time.Sleep(10 * time.Millisecond)
-	
+
 	// Test with socket existing
 	conn, err := ConnectWithFallback(ctx, "localhost:50051")
 	if err != nil {
@@ -213,20 +213,20 @@ func TestConnectIntegration(t *testing.T) {
 
 	// Create a temporary directory for our test
 	tmpDir := t.TempDir()
-	
+
 	// Set up environment
 	oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 	os.Setenv("XDG_RUNTIME_DIR", tmpDir)
 	defer os.Setenv("XDG_RUNTIME_DIR", oldXDG)
-	
+
 	// Create socket directory
 	socketDir := filepath.Join(tmpDir, "gismo")
 	if err := os.MkdirAll(socketDir, 0700); err != nil {
 		t.Fatalf("Failed to create socket directory: %v", err)
 	}
-	
+
 	socketPath := filepath.Join(socketDir, "gismo.sock")
-	
+
 	// Create a real Unix socket listener
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
@@ -234,37 +234,37 @@ func TestConnectIntegration(t *testing.T) {
 	}
 	defer listener.Close()
 	defer os.Remove(socketPath)
-	
+
 	// Start a simple gRPC server
 	srv := grpc.NewServer()
 	go srv.Serve(listener)
 	defer srv.Stop()
-	
+
 	// Give server time to start
 	time.Sleep(50 * time.Millisecond)
-	
+
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	
+
 	conn, err := Connect(ctx)
 	if err != nil {
 		t.Errorf("Connect() failed: %v", err)
 	}
-	
+
 	if conn != nil {
 		defer conn.Close()
-		
+
 		// Verify connection state
 		state := conn.GetState()
 		if state == connectivity.Shutdown || state == connectivity.TransientFailure {
 			t.Errorf("Unexpected connection state: %v", state)
 		}
-		
+
 		// Try to wait for ready
 		ctx2, cancel2 := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel2()
-		
+
 		if !conn.WaitForStateChange(ctx2, connectivity.Shutdown) {
 			// Connection is not shutdown, which is good
 		}
@@ -280,19 +280,19 @@ func TestConnectRaceCondition(t *testing.T) {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
-	
+
 	oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 	os.Setenv("XDG_RUNTIME_DIR", tmpDir)
 	defer os.Setenv("XDG_RUNTIME_DIR", oldXDG)
-	
+
 	// Create gismo directory
 	gismoDir := filepath.Join(tmpDir, "gismo")
 	if err := os.MkdirAll(gismoDir, 0700); err != nil {
 		t.Fatalf("Failed to create gismo directory: %v", err)
 	}
-	
+
 	socketPath := filepath.Join(gismoDir, "gismo.sock")
-	
+
 	// Create a mock server
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
@@ -300,19 +300,19 @@ func TestConnectRaceCondition(t *testing.T) {
 	}
 	defer listener.Close()
 	defer os.Remove(socketPath)
-	
+
 	srv := grpc.NewServer()
 	go srv.Serve(listener)
 	defer srv.Stop()
-	
+
 	// Give server time to start
 	time.Sleep(10 * time.Millisecond)
-	
+
 	// Test multiple concurrent connections
 	ctx := context.Background()
 	numConnections := 10
 	errors := make(chan error, numConnections)
-	
+
 	for i := 0; i < numConnections; i++ {
 		go func() {
 			conn, err := Connect(ctx)
@@ -322,7 +322,7 @@ func TestConnectRaceCondition(t *testing.T) {
 			errors <- err
 		}()
 	}
-	
+
 	// Collect results
 	for i := 0; i < numConnections; i++ {
 		if err := <-errors; err != nil {
@@ -336,27 +336,27 @@ func TestConnectWithBadPermissions(t *testing.T) {
 	if os.Getenv("GOOS") == "windows" {
 		t.Skip("Skipping Unix permission test on Windows")
 	}
-	
+
 	tmpDir := t.TempDir()
 	oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 	os.Setenv("XDG_RUNTIME_DIR", tmpDir)
 	defer os.Setenv("XDG_RUNTIME_DIR", oldXDG)
-	
+
 	// Create gismo directory
 	gismoDir := filepath.Join(tmpDir, "gismo")
 	if err := os.MkdirAll(gismoDir, 0700); err != nil {
 		t.Fatalf("Failed to create gismo directory: %v", err)
 	}
-	
+
 	socketPath := filepath.Join(gismoDir, "gismo.sock")
-	
+
 	// Create a regular file instead of socket
 	file, err := os.Create(socketPath)
 	if err != nil {
 		t.Fatalf("Failed to create file: %v", err)
 	}
 	file.Close()
-	
+
 	// This should fail because Connect expects a socket but finds a regular file
 	// The grpc.NewClient will succeed but the actual connection will fail
 	ctx := context.Background()
@@ -390,12 +390,12 @@ func BenchmarkConnect(b *testing.B) {
 	oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 	os.Setenv("XDG_RUNTIME_DIR", tmpDir)
 	defer os.Setenv("XDG_RUNTIME_DIR", oldXDG)
-	
+
 	gismoDir := filepath.Join(tmpDir, "gismo")
 	if err := os.MkdirAll(gismoDir, 0700); err != nil {
 		b.Fatalf("Failed to create gismo directory: %v", err)
 	}
-	
+
 	socketPath := filepath.Join(gismoDir, "gismo.sock")
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
@@ -403,15 +403,15 @@ func BenchmarkConnect(b *testing.B) {
 	}
 	defer listener.Close()
 	defer os.Remove(socketPath)
-	
+
 	srv := grpc.NewServer()
 	go srv.Serve(listener)
 	defer srv.Stop()
-	
+
 	time.Sleep(10 * time.Millisecond)
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		conn, err := Connect(ctx)

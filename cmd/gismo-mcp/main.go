@@ -10,12 +10,17 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	json "github.com/goccy/go-json"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/jrossi/gismo/pkg/engine"
 	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
+	"github.com/jrossi/gismo/pkg/handlers"
+	"github.com/jrossi/gismo/pkg/knowledge"
+	"github.com/jrossi/gismo/pkg/reflection"
 	"github.com/jrossi/gismo/pkg/socket"
 )
 
@@ -84,22 +89,36 @@ type ContentItem struct {
 
 // MCPServer handles MCP protocol over stdin/stdout
 type MCPServer struct {
-	reader          *bufio.Reader
-	writer          *bufio.Writer
-	grpcConn        *grpc.ClientConn
-	csClient        gismov1.CodeSitterClient
-	knowledgeClient gismov1.KnowledgeServiceClient
-	workspace       string
-	projectContext  *gismov1.ProjectContext
-	tools           map[string]ToolHandler
+	reader            *bufio.Reader
+	writer            *bufio.Writer
+	grpcConn          *grpc.ClientConn
+	csClient          gismov1.CodeSitterClient
+	knowledgeClient   gismov1.KnowledgeServiceClient
+	systemClient      gismov1.SystemServiceClient
+	reflectionHandler *handlers.ReflectionHandler
+	knowledgeStore    *knowledge.Store
+	reflectionStorage *reflection.Storage
+	workspace         string
+	projectContext    *gismov1.ProjectContext
+	tools             map[string]ToolHandler
+	sessionID         string
+	operationTracker  *OperationTracker
 }
 
 // ToolHandler is a function that handles a tool call
 type ToolHandler func(ctx context.Context, args json.RawMessage) ToolCallResult
 
+// OperationTracker tracks operations for reflection
+type OperationTracker struct {
+	operations []string
+	count      int
+}
+
 func NewMCPServer() (*MCPServer, error) {
+	ctx := context.Background()
+
 	// Connect to gismo-server
-	conn, err := connectToGismoServer(context.Background())
+	conn, err := connectToGismoServer(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to gismo-server: %w", err)
 	}
@@ -120,18 +139,46 @@ func NewMCPServer() (*MCPServer, error) {
 	// Create project context
 	projectName := filepath.Base(projectRoot)
 
+	// Initialize knowledge store
+	knowledgeStore, err := knowledge.New(ctx)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize knowledge store: %v", err)
+		// Continue without knowledge store - not critical
+	}
+
+	// Initialize reflection handler
+	reflectionHandler := handlers.NewReflectionHandler()
+
+	// Initialize reflection storage if we have a knowledge store
+	var reflectionStorage *reflection.Storage
+	if knowledgeStore != nil {
+		reflectionStorage, err = reflection.NewStorage(knowledgeStore.DB())
+		if err != nil {
+			log.Printf("Warning: Failed to initialize reflection storage: %v", err)
+		} else {
+			// Connect reflection handler to storage
+			reflectionHandler.SetStorage(reflectionStorage)
+		}
+	}
+
 	s := &MCPServer{
-		reader:          bufio.NewReader(os.Stdin),
-		writer:          bufio.NewWriter(os.Stdout),
-		grpcConn:        conn,
-		csClient:        gismov1.NewCodeSitterClient(conn),
-		knowledgeClient: gismov1.NewKnowledgeServiceClient(conn),
-		workspace:       projectRoot,
+		reader:            bufio.NewReader(os.Stdin),
+		writer:            bufio.NewWriter(os.Stdout),
+		grpcConn:          conn,
+		csClient:          gismov1.NewCodeSitterClient(conn),
+		knowledgeClient:   gismov1.NewKnowledgeServiceClient(conn),
+		systemClient:      gismov1.NewSystemServiceClient(conn),
+		reflectionHandler: reflectionHandler,
+		knowledgeStore:    knowledgeStore,
+		reflectionStorage: reflectionStorage,
+		workspace:         projectRoot,
 		projectContext: &gismov1.ProjectContext{
 			ProjectPath: projectRoot,
 			ProjectName: projectName,
 		},
-		tools: make(map[string]ToolHandler),
+		tools:            make(map[string]ToolHandler),
+		sessionID:        fmt.Sprintf("session_%d", time.Now().UnixNano()),
+		operationTracker: &OperationTracker{},
 	}
 
 	// Register all tools
@@ -166,11 +213,35 @@ func (s *MCPServer) registerTools() {
 	s.tools["RemoveDocset"] = s.wrapGRPCCall(s.knowledgeClient.RemoveDocset)
 	s.tools["CreateResearchTask"] = s.wrapGRPCCall(s.knowledgeClient.CreateResearchTask)
 	s.tools["GetResearchTaskStatus"] = s.wrapGRPCCall(s.knowledgeClient.GetResearchTaskStatus)
+
+	// Register Reflection tools (manual implementation for now)
+	s.tools["think_about_collected_information"] = s.handleReflection
+	s.tools["think_about_task_adherence"] = s.handleTaskAdherence
+	s.tools["think_about_whether_you_are_done"] = s.handleCompletionCheck
+
+	// Register System tools
+	s.tools["GetVersion"] = s.wrapGRPCCall(s.systemClient.GetVersion)
+	s.tools["HealthCheck"] = s.wrapGRPCCall(s.systemClient.HealthCheck)
 }
 
 // wrapGRPCCall wraps a gRPC method call to work as a tool handler
 func (s *MCPServer) wrapGRPCCall(grpcMethod interface{}) ToolHandler {
 	return func(ctx context.Context, args json.RawMessage) ToolCallResult {
+		// Track the operation
+		methodName := s.getMethodName(grpcMethod)
+		s.operationTracker.count++
+		s.operationTracker.operations = append(s.operationTracker.operations, methodName)
+
+		// Track with reflection handler if available
+		if s.reflectionHandler != nil {
+			// Create a PreToolUseMessage for tracking
+			preMsg := &engine.PreToolUseMessage{
+				ToolName:  methodName,
+				ToolInput: map[string]json.RawMessage{"args": args},
+			}
+			_, _ = s.reflectionHandler.HandlePreToolUse(ctx, preMsg)
+		}
+
 		// Use reflection to call the gRPC method
 		methodValue := reflect.ValueOf(grpcMethod)
 		methodType := methodValue.Type()
@@ -224,6 +295,16 @@ func (s *MCPServer) wrapGRPCCall(grpcMethod interface{}) ToolHandler {
 		// Check for error (second return value)
 		if len(results) > 1 && !results[1].IsNil() {
 			err := results[1].Interface().(error)
+
+			// Track failure with reflection handler
+			if s.reflectionHandler != nil {
+				postMsg := &engine.PostToolUseMessage{
+					ToolName:  methodName,
+					ToolError: err.Error(),
+				}
+				_, _ = s.reflectionHandler.HandlePostToolUse(ctx, postMsg)
+			}
+
 			return ToolCallResult{
 				IsError: true,
 				Content: []ContentItem{{Type: "text", Text: fmt.Sprintf("RPC error: %v", err)}},
@@ -231,12 +312,33 @@ func (s *MCPServer) wrapGRPCCall(grpcMethod interface{}) ToolHandler {
 		}
 
 		// Format the response
+		var responseText string
 		if len(results) > 0 && !results[0].IsNil() {
 			response := results[0].Interface().(proto.Message)
 			responseJSON, _ := json.MarshalIndent(response, "", "  ")
-			return ToolCallResult{
-				Content: []ContentItem{{Type: "text", Text: string(responseJSON)}},
+			responseText = string(responseJSON)
+
+			// Track success with reflection handler
+			if s.reflectionHandler != nil {
+				postMsg := &engine.PostToolUseMessage{
+					ToolName:   methodName,
+					ToolOutput: responseJSON,
+				}
+				_, _ = s.reflectionHandler.HandlePostToolUse(ctx, postMsg)
 			}
+
+			return ToolCallResult{
+				Content: []ContentItem{{Type: "text", Text: responseText}},
+			}
+		}
+
+		// Track success with minimal output
+		if s.reflectionHandler != nil {
+			postMsg := &engine.PostToolUseMessage{
+				ToolName:   methodName,
+				ToolOutput: json.RawMessage(`{"status":"success"}`),
+			}
+			_, _ = s.reflectionHandler.HandlePostToolUse(ctx, postMsg)
 		}
 
 		return ToolCallResult{
@@ -542,6 +644,120 @@ func generateToolSchema(methodName string) json.RawMessage {
 		"properties": {},
 		"additionalProperties": true
 	}`)
+}
+
+// handleReflection prompts reflection on collected information
+func (s *MCPServer) handleReflection(ctx context.Context, args json.RawMessage) ToolCallResult {
+	// Track the reflection operation
+	s.operationTracker.count++
+	s.operationTracker.operations = append(s.operationTracker.operations, "reflection")
+
+	// Generate reflection prompt based on recent operations
+	prompt := fmt.Sprintf(`
+Based on your recent operations (%d total):
+
+You've been gathering information across multiple sources. Now is a good time to:
+1. Review what you've learned so far
+2. Identify any gaps in your understanding
+3. Determine if you have sufficient context to proceed
+4. Consider whether additional exploration is needed
+
+Recent tool usage pattern: %s
+
+Consider the completeness and relevance of the information gathered.
+`, s.operationTracker.count, s.getRecentPattern())
+
+	return ToolCallResult{
+		Content: []ContentItem{{
+			Type: "text",
+			Text: prompt,
+		}},
+	}
+}
+
+// handleTaskAdherence checks if still on track with the task
+func (s *MCPServer) handleTaskAdherence(ctx context.Context, args json.RawMessage) ToolCallResult {
+	prompt := `
+Reviewing task adherence:
+
+Consider:
+1. Are you still working on the original task?
+2. Have you been sidetracked by interesting but unrelated findings?
+3. Is your current approach the most direct path to the solution?
+4. Should you refocus on the core requirements?
+
+This checkpoint helps ensure you're making progress toward the actual goal.
+`
+
+	return ToolCallResult{
+		Content: []ContentItem{{
+			Type: "text",
+			Text: prompt,
+		}},
+	}
+}
+
+// handleCompletionCheck verifies if the task is complete
+func (s *MCPServer) handleCompletionCheck(ctx context.Context, args json.RawMessage) ToolCallResult {
+	prompt := `
+Checking task completion:
+
+Review:
+1. Have all requirements been met?
+2. Is the solution complete and functional?
+3. Are there any edge cases not addressed?
+4. Is documentation or cleanup needed?
+5. Should you test the implementation?
+
+This is your final quality check before considering the task done.
+`
+
+	return ToolCallResult{
+		Content: []ContentItem{{
+			Type: "text",
+			Text: prompt,
+		}},
+	}
+}
+
+// getRecentPattern returns a summary of recent operations
+func (s *MCPServer) getRecentPattern() string {
+	if len(s.operationTracker.operations) == 0 {
+		return "No operations tracked yet"
+	}
+
+	// Get last 5 operations or all if less than 5
+	start := len(s.operationTracker.operations) - 5
+	if start < 0 {
+		start = 0
+	}
+
+	recent := s.operationTracker.operations[start:]
+	return strings.Join(recent, " -> ")
+}
+
+// getMethodName extracts the method name from a gRPC method using reflection
+func (s *MCPServer) getMethodName(grpcMethod interface{}) string {
+	// Use reflection to get the function name
+	methodValue := reflect.ValueOf(grpcMethod)
+	methodType := methodValue.Type()
+
+	// Try to extract the name from the type string
+	typeStr := methodType.String()
+
+	// Extract the method name from the type string
+	// Usually looks like "func(*context.Context, *pb.SomeRequest, ...grpc.CallOption) (*pb.SomeResponse, error)"
+	parts := strings.Split(typeStr, ".")
+	if len(parts) > 1 {
+		// Get the last part which usually contains the method name
+		lastPart := parts[len(parts)-1]
+		// Remove any remaining characters after the method name
+		if idx := strings.IndexAny(lastPart, ",("); idx > 0 {
+			return lastPart[:idx]
+		}
+	}
+
+	return "unknown"
 }
 
 func main() {

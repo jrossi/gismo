@@ -11,7 +11,8 @@ import (
 	"google.golang.org/grpc"
 
 	gismov1 "github.com/jrossi/gismo/pkg/generated/gismo/v1"
-	"github.com/jrossi/gismo/pkg/server/handlers"
+	"github.com/jrossi/gismo/pkg/handlers"
+	serverhandlers "github.com/jrossi/gismo/pkg/server/handlers"
 )
 
 const (
@@ -98,13 +99,17 @@ func (s *Server) Start() error {
 
 	// Register knowledge service if database is available
 	if s.knowledgeDB != nil {
-		knowledgeHandler := handlers.NewKnowledgeHandlerFromDB(s.knowledgeDB)
+		knowledgeHandler := serverhandlers.NewKnowledgeHandlerFromDB(s.knowledgeDB)
 		gismov1.RegisterKnowledgeServiceServer(s.grpcServer, knowledgeHandler)
 	}
 
 	// Register CodeSitter service
-	codeSitterHandler := handlers.NewCodeSitterHandler()
+	codeSitterHandler := serverhandlers.NewCodeSitterHandler()
 	gismov1.RegisterCodeSitterServer(s.grpcServer, codeSitterHandler)
+
+	// Register System service for version and health checks
+	systemHandler := handlers.NewSystemHandler()
+	gismov1.RegisterSystemServiceServer(s.grpcServer, systemHandler)
 
 	// Start serving in background
 	go func() {
