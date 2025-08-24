@@ -239,7 +239,7 @@ func (m *mockKnowledgeServer) CancelResearchTask(ctx context.Context, req *gismo
 
 	return &gismov1.CancelResearchTaskResponse{
 		Success: true,
-		Message: "Task cancelled",
+		Message: "Task canceled",
 	}, nil
 }
 
@@ -273,13 +273,13 @@ func setupTestServer(t *testing.T) (*mockKnowledgeServer, string, func()) {
 	// Use a shorter path for Mac compatibility
 	tmpDir := "/tmp/gkt" + fmt.Sprintf("%d", time.Now().UnixNano()%100000)
 	os.RemoveAll(tmpDir)
-	os.MkdirAll(tmpDir, 0700)
+	_ = os.MkdirAll(tmpDir, 0700)
 
 	oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 	os.Setenv("XDG_RUNTIME_DIR", tmpDir)
 
 	socketPath := filepath.Join(tmpDir, "gismo", "gismo.sock")
-	os.MkdirAll(filepath.Dir(socketPath), 0700)
+	_ = os.MkdirAll(filepath.Dir(socketPath), 0700)
 
 	// Create Unix socket listener
 	listener, err := net.Listen("unix", socketPath)
@@ -293,7 +293,9 @@ func setupTestServer(t *testing.T) (*mockKnowledgeServer, string, func()) {
 	gismov1.RegisterKnowledgeServiceServer(srv, mockServer)
 
 	// Start server
-	go srv.Serve(listener)
+	go func() {
+		_ = srv.Serve(listener)
+	}()
 
 	// Give server time to start
 	time.Sleep(10 * time.Millisecond)
@@ -370,7 +372,7 @@ func TestGetProjectContext(t *testing.T) {
 	oldProjectDir := os.Getenv("CLAUDE_PROJECT_DIR")
 	oldProjectID := os.Getenv("CLAUDE_PROJECT_ID")
 	defer func() {
-		os.Chdir(oldCwd)
+		_ = os.Chdir(oldCwd)
 		os.Setenv("CLAUDE_PROJECT_DIR", oldProjectDir)
 		os.Setenv("CLAUDE_PROJECT_ID", oldProjectID)
 	}()
@@ -605,7 +607,7 @@ func TestClient_ExaSearch(t *testing.T) {
 	}
 
 	// Test with nil options
-	resp, err = client.ExaSearch(context.Background(), "test query", nil)
+	_, err = client.ExaSearch(context.Background(), "test query", nil)
 	if err != nil {
 		t.Errorf("ExaSearch() with nil options error = %v", err)
 	}

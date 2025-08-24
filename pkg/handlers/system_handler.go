@@ -56,9 +56,7 @@ func (h *SystemHandler) HealthCheck(ctx context.Context, req *gismov1.HealthChec
 
 	return &gismov1.HealthCheckResponse{
 		Healthy:       true,
-		Status:        "operational",
 		UptimeSeconds: uptime,
 		Services:      services,
 	}, nil
 }
-

@@ -1,3 +1,16 @@
 {
-  "hooks": {}
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "gismo",
+            "timeout": 60000
+          }
+        ]
+      }
+    ]
+  }
 }

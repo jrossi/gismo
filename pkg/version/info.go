@@ -21,4 +21,3 @@ func Info() map[string]string {
 		"builtBy": BuildBy,
 	}
 }
-

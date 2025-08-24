@@ -81,13 +81,18 @@ func TestEnsureServerRunning(t *testing.T) {
 
 func TestEnsureServerRunningWhenAlreadyRunning(t *testing.T) {
 	// Use shorter temp directory for this test to avoid macOS socket path limits
-	tmpDir := "/tmp/gismo_test_" + t.Name()
+	tmpDir := "/tmp/gtest_srv"
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	srv := server.NewWithRuntimeDir(tmpDir)
+	// Set XDG_RUNTIME_DIR so client and server use same directory
+	oldXDG := os.Getenv("XDG_RUNTIME_DIR")
+	os.Setenv("XDG_RUNTIME_DIR", tmpDir)
+	defer os.Setenv("XDG_RUNTIME_DIR", oldXDG)
+
+	srv := server.NewWithRuntimeDir(filepath.Join(tmpDir, "gismo"))
 
 	if err := srv.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -103,7 +108,7 @@ func TestEnsureServerRunningWhenAlreadyRunning(t *testing.T) {
 	// This should succeed immediately since server is already running
 	err = cli.EnsureServerRunning()
 	if err != nil {
-		t.Fatalf("Failed to start server: %v", err)
+		t.Errorf("EnsureServerRunning failed when server was already running: %v", err)
 	}
 }
 

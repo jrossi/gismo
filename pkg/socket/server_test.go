@@ -51,7 +51,7 @@ func TestCreateSocketDir(t *testing.T) {
 
 				// Pre-create the gismo directory
 				gismoDir := filepath.Join(tmpDir, "gismo")
-				os.MkdirAll(gismoDir, 0700)
+				_ = os.MkdirAll(gismoDir, 0700)
 
 				return func() {
 					os.Setenv("XDG_RUNTIME_DIR", oldXDG)
@@ -138,7 +138,7 @@ func TestListen(t *testing.T) {
 				// Create a stale socket file
 				socketPath := GetSocketPath()
 				socketDir := filepath.Dir(socketPath)
-				os.MkdirAll(socketDir, 0700)
+				_ = os.MkdirAll(socketDir, 0700)
 				// Create a regular file where the socket should be
 				file, err := os.Create(socketPath)
 				if err != nil {
@@ -155,12 +155,12 @@ func TestListen(t *testing.T) {
 				// Use a directory we can't write to
 				tmpDir := t.TempDir()
 				readOnlyDir := filepath.Join(tmpDir, "readonly")
-				os.MkdirAll(readOnlyDir, 0500) // Read-only directory
+				_ = os.MkdirAll(readOnlyDir, 0500) // Read-only directory
 
 				oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 				os.Setenv("XDG_RUNTIME_DIR", readOnlyDir)
 				return func() {
-					os.Chmod(readOnlyDir, 0700) // Restore permissions for cleanup
+					_ = os.Chmod(readOnlyDir, 0700) // Restore permissions for cleanup
 					os.Setenv("XDG_RUNTIME_DIR", oldXDG)
 				}
 			},
@@ -420,7 +420,14 @@ func TestSocketDirPermissions(t *testing.T) {
 		t.Skip("Skipping Unix permission test on Windows")
 	}
 
-	tmpDir := t.TempDir()
+	// Use a shorter path for macOS Unix socket length limits
+	tmpDir := "/tmp/gtest_perm"
+	os.RemoveAll(tmpDir)
+	if err := os.MkdirAll(tmpDir, 0700); err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
 	oldXDG := os.Getenv("XDG_RUNTIME_DIR")
 	os.Setenv("XDG_RUNTIME_DIR", tmpDir)
 	defer os.Setenv("XDG_RUNTIME_DIR", oldXDG)

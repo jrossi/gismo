@@ -105,7 +105,9 @@ func TestConnect(t *testing.T) {
 
 				// Start a simple gRPC server
 				srv := grpc.NewServer()
-				go srv.Serve(listener)
+				go func() {
+					_ = srv.Serve(listener)
+				}()
 
 				// Give server time to start
 				time.Sleep(10 * time.Millisecond)
@@ -190,7 +192,9 @@ func TestConnectWithFallback(t *testing.T) {
 	defer os.Remove(socketPath)
 
 	srv := grpc.NewServer()
-	go srv.Serve(listener)
+	go func() {
+		_ = srv.Serve(listener)
+	}()
 	defer srv.Stop()
 
 	// Give server time to start
@@ -237,7 +241,9 @@ func TestConnectIntegration(t *testing.T) {
 
 	// Start a simple gRPC server
 	srv := grpc.NewServer()
-	go srv.Serve(listener)
+	go func() {
+		_ = srv.Serve(listener)
+	}()
 	defer srv.Stop()
 
 	// Give server time to start
@@ -265,9 +271,8 @@ func TestConnectIntegration(t *testing.T) {
 		ctx2, cancel2 := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel2()
 
-		if !conn.WaitForStateChange(ctx2, connectivity.Shutdown) {
-			// Connection is not shutdown, which is good
-		}
+		// Check if connection is not shutdown (which is good)
+		_ = conn.WaitForStateChange(ctx2, connectivity.Shutdown)
 	}
 }
 
@@ -302,7 +307,9 @@ func TestConnectRaceCondition(t *testing.T) {
 	defer os.Remove(socketPath)
 
 	srv := grpc.NewServer()
-	go srv.Serve(listener)
+	go func() {
+		_ = srv.Serve(listener)
+	}()
 	defer srv.Stop()
 
 	// Give server time to start
@@ -405,7 +412,9 @@ func BenchmarkConnect(b *testing.B) {
 	defer os.Remove(socketPath)
 
 	srv := grpc.NewServer()
-	go srv.Serve(listener)
+	go func() {
+		_ = srv.Serve(listener)
+	}()
 	defer srv.Stop()
 
 	time.Sleep(10 * time.Millisecond)
