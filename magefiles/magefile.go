@@ -57,7 +57,7 @@ func getBuildFlags() ([]string, error) {
 
 	date := time.Now().UTC().Format("2006-01-02T15:04:05Z")
 
-	ldflags := fmt.Sprintf("-s -w -X main.version=%s -X main.commit=%s -X main.date=%s -X main.builtBy=mage",
+	ldflags := fmt.Sprintf("-s -w -X github.com/jrossi/gismo/pkg/version.BuildVersion=%s -X github.com/jrossi/gismo/pkg/version.BuildCommit=%s -X github.com/jrossi/gismo/pkg/version.BuildDate=%s -X github.com/jrossi/gismo/pkg/version.BuildBy=mage",
 		version, commit, date)
 
 	return []string{"-ldflags", ldflags}, nil
@@ -98,6 +98,37 @@ func getRuntimeDir() string {
 	}
 
 	return filepath.Join(os.TempDir(), fmt.Sprintf("gismo-%s", uid))
+}
+
+// ensureGoTools ensures Go tools are available in PATH
+func ensureGoTools() error {
+	// Get Go environment dynamically
+	gopath, err := sh.Output("go", "env", "GOPATH")
+	if err != nil {
+		return fmt.Errorf("failed to get GOPATH: %w", err)
+	}
+
+	gobin, err := sh.Output("go", "env", "GOBIN")
+	if err != nil {
+		return fmt.Errorf("failed to get GOBIN: %w", err)
+	}
+
+	// If GOBIN is not set, use GOPATH/bin
+	if gobin == "" {
+		gobin = filepath.Join(gopath, "bin")
+	}
+
+	// Add Go bin directory to PATH if not already present
+	currentPath := os.Getenv("PATH")
+	if !strings.Contains(currentPath, gobin) {
+		newPath := gobin + string(os.PathListSeparator) + currentPath
+		if err := os.Setenv("PATH", newPath); err != nil {
+			return fmt.Errorf("failed to update PATH: %w", err)
+		}
+		fmt.Printf("Added %s to PATH\n", gobin)
+	}
+
+	return nil
 }
 
 // ensureDirs creates necessary build directories
@@ -188,6 +219,12 @@ func buildBinary(name, cmdPath string) error {
 
 // Build builds all binaries
 func Build() error {
+	// Ensure Go tools are available
+	if err := ensureGoTools(); err != nil {
+		return err
+	}
+	mg.Deps(ensureDirs)
+
 	fmt.Println("Building binaries...")
 
 	for name, path := range binaries {
@@ -233,6 +270,11 @@ func Fmt() error {
 
 // Lint runs golangci-lint
 func Lint() error {
+	// Ensure Go tools are available
+	if err := ensureGoTools(); err != nil {
+		return err
+	}
+
 	fmt.Println("Running linter...")
 
 	// Check if golangci-lint is available
@@ -248,6 +290,11 @@ func Lint() error {
 
 // Install installs all binaries to GOPATH
 func Install() error {
+	// Ensure Go tools are available
+	if err := ensureGoTools(); err != nil {
+		return err
+	}
+
 	buildFlags, err := getBuildFlags()
 	if err != nil {
 		return err
